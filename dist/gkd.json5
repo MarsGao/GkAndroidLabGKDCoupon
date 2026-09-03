@@ -1,0 +1,114 @@
+// MarsGao薅羊毛领券 · GKD第三方订阅规则
+// 官方格式参考：https://gkd.li/guide/subscription
+// 订阅地址：https://raw.githubusercontent.com/MarsGao/GkAndroidLabGKDCoupon/main/dist/gkd.json5
+{
+  id: 82640113,
+  name: 'MarsGao薅羊毛领券',
+  version: 1,
+  author: 'MarsGao',
+  updateUrl: 'https://raw.githubusercontent.com/MarsGao/GkAndroidLabGKDCoupon/main/dist/gkd.json5',
+  checkUpdateUrl: 'https://raw.githubusercontent.com/MarsGao/GkAndroidLabGKDCoupon/main/dist/gkd.version.json5',
+  supportUri: 'https://github.com/MarsGao/GkAndroidLabGKDCoupon',
+  categories: [
+    { key: 0, name: '领券签到' },
+    { key: 1, name: '弹窗处理' },
+  ],
+  globalGroups: [],
+  apps: [
+    {
+      id: 'com.xunmeng.pinduoduo',
+      name: '拼多多',
+      groups: [
+        {
+          key: 1,
+          name: '领券签到-百亿补贴会员每日打卡',
+          desc: '在「百亿补贴会员」页精确点击文案「打卡」。每天最多点 1 次，不含「打卡送积分」「待打卡」等标题文案。',
+          enable: true,
+          fastQuery: true,
+          actionMaximum: 1,
+          resetMatch: 'app',
+          matchTime: 10000,
+          activityIds: [
+            'com.xunmeng.pinduoduo.activity.NewPageActivity',
+            'com.xunmeng.pinduoduo.activity.NewPageMaskActivity',
+          ],
+          rules: [
+            {
+              key: 0,
+              matches: '[text="打卡"][visibleToUser=true]',
+              exampleUrls: [],
+              snapshotUrls: [],
+            },
+          ],
+        },
+        {
+          key: 2,
+          name: '领券签到-会员等级礼包无门槛券领取',
+          desc: '在「百亿补贴会员等级」页，领取等级礼包中的无门槛券。不点「去使用/已使用」，不点「少拉1人」裂变卡，不进商品页。',
+          enable: true,
+          fastQuery: true,
+          actionMaximum: 2,
+          resetMatch: 'app',
+          matchTime: 15000,
+          activityIds: [
+            'com.xunmeng.pinduoduo.activity.NewPageActivity',
+            'com.xunmeng.pinduoduo.activity.NewPageMaskActivity',
+          ],
+          rules: [
+            {
+              key: 0,
+              name: '无门槛券旁领取',
+              // 同屏出现「无门槛券」文案后，点「领取」；已领时文案变「去使用」，规则自然失效
+              matches: [
+                '[text*="无门槛券"][visibleToUser=true]',
+                '[text="领取"][visibleToUser=true]',
+              ],
+              snapshotUrls: [],
+            },
+            {
+              key: 1,
+              name: '等级礼包区块内领取（兜底）',
+              matches: [
+                '[text*="等级礼包"][visibleToUser=true]',
+                '[text="领取"][visibleToUser=true]',
+              ],
+              snapshotUrls: [],
+            },
+          ],
+        },
+        {
+          key: 3,
+          name: '弹窗处理-关闭诱导弹窗',
+          desc: '关闭「残忍拒绝/以后再说/我知道了/开心收下」等干扰弹窗；不点分享裂变。',
+          enable: true,
+          fastQuery: true,
+          actionMaximum: 5,
+          rules: [
+            {
+              key: 0,
+              matches: '[text="残忍拒绝" || text="以后再说" || text="我知道了" || text="开心收下"][visibleToUser=true]',
+            },
+            {
+              key: 1,
+              matches: 'ImageView[desc="关闭" || desc="close"][visibleToUser=true]',
+            },
+          ],
+        },
+        {
+          key: 4,
+          name: '领券签到-百亿补贴主会场立即领取',
+          desc: '主会场「立即领取/一键全领/开心收下」。严禁点「去使用」（会进商品页）。',
+          enable: true,
+          fastQuery: true,
+          actionMaximum: 20,
+          rules: [
+            {
+              key: 0,
+              matches: '[text="立即领取" || text="一键全领" || text="开心收下"][visibleToUser=true]',
+            },
+          ],
+        },
+      ],
+    },
+  ],
+}

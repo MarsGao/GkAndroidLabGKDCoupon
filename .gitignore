@@ -1,0 +1,17 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local test outputs / screenshots
+*.png
+*.xml
+*.log
+
+# Editor / Workspace settings
+.vscode/
+*.code-workspace
+
+# OS files
+.DS_Store
+Thumbs.db

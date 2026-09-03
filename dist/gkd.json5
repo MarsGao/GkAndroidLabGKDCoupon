@@ -4,7 +4,7 @@
 {
   id: 82640113,
   name: 'MarsGao薅羊毛领券',
-  version: 1,
+  version: 2,
   author: 'MarsGao',
   updateUrl: 'https://raw.githubusercontent.com/MarsGao/GkAndroidLabGKDCoupon/main/dist/gkd.json5',
   checkUpdateUrl: 'https://raw.githubusercontent.com/MarsGao/GkAndroidLabGKDCoupon/main/dist/gkd.version.json5',
@@ -97,14 +97,14 @@
         {
           key: 4,
           name: '领券签到-百亿补贴主会场立即领取',
-          desc: '主会场「立即领取/一键全领/开心收下」。严禁点「去使用」（会进商品页）。',
+          desc: '百亿补贴主会场/消费券「立即领取/一键全领/开心收下/立即点亮」。严禁点「去使用」（会进商品页），不点「抽福袋」（裂变）。',
           enable: true,
           fastQuery: true,
           actionMaximum: 20,
           rules: [
             {
               key: 0,
-              matches: '[text="立即领取" || text="一键全领" || text="开心收下"][visibleToUser=true]',
+              matches: '[text="立即领取" || text="一键全领" || text="开心收下" || text="立即点亮"][visibleToUser=true]',
             },
           ],
         },

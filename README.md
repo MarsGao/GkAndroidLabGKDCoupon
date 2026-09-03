@@ -32,16 +32,39 @@ https://ghfast.top/https://raw.githubusercontent.com/MarsGao/GkAndroidLabGKDCoup
 
 ---
 
-## GKD 生态与第三方订阅说明
+## GKD 生态：谁维护规则？别人怎么搜到订阅？
 
-### GKD 官方是否有公开规则市场？
-**没有**。出于法律合规、平台政策及广告对抗风险考量，GKD 官方 (`gkd-kit`) 仅提供软件框架与格式规范（[gkd.li](https://gkd.li)），**刻意不维护任何官方集中式规则市场**。
+### GKD 官方没有规则市场
 
-### 社区如何发现与收录规则？
-目前 GKD 社区主要依赖第三方自治列表进行收录与索引，其中最主流的公共目录是由社区维护的：
-- [Adpro-Team/GKD_THS_List](https://github.com/Adpro-Team/GKD_THS_List)（Adpro-Team 整理的 GKD 第三方订阅列表）。
-- 该列表收录符合开源规范、一个月内有活跃提交且无违规行为的订阅仓库。
-- 本项目遵循 GKD 官方订阅规范标准（订阅标识 `82640113`），已符合收录要求。
+GKD 本体由 [gkd-kit](https://github.com/gkd-kit) 维护，官网 [gkd.li](https://gkd.li)。[使用协议](https://gkd.li/guide/terms) 写明：
+
+- 应用**默认不包含任何规则内容**
+- 用户需自行编写，或通过 URL 导入第三方订阅
+- 官方只提供 App、选择器语法与[订阅格式](https://gkd.li/guide/subscription)，**不运营官方规则商店 / 应用内推荐榜**
+
+因此：在 GKD App 里搜不到「官方精选订阅」。别人要找到本仓库，只能靠 GitHub 搜索、社区目录，或互相转发导入链接。
+
+### 社区公开目录：`GKD_THS_List` 是谁维护的？
+
+[Adpro-Team/GKD_THS_List](https://github.com/Adpro-Team/GKD_THS_List) **不是 GKD 官方项目**，而是社区整理的「第三方订阅收录名单」。
+
+| 项 | 事实 |
+|---|---|
+| 维护组织 | GitHub 组织 **Adpro-Team** |
+| 主要维护者 | **Adpro**（联系邮箱 `adpro_qwq@qq.com` / `adpro@adproqwq.top`） |
+| 仓库用途 | 只收录订阅名、作者、订阅 ID、导入 URL、维护状态；**不托管各家规则内容** |
+| 收录方式 | Fork 后只改 `list.ts`，按 [CONTRIBUTING.md](https://github.com/Adpro-Team/GKD_THS_List/blob/main/CONTRIBUTING.md) 提 PR |
+| 停更判定 | 超过 **1 个月没有任何 git 提交** 视为停止维护 |
+
+2026-09 抽样（以该仓库 `list.ts` 为准）：仍在维护的有奥怪 `id=86`、甘霖 `233`、梦念逍遥 `1`、Mrlc `2`；Adpro 自己的订阅 `825`、AIsouler `666`、九千院 `717` 已标停止维护。本仓库订阅 ID **`82640113`** 与上述已收录 ID **不冲突**。
+
+本项目定位与上述「广告拦截大而全」订阅不同：只做领券 / 签到 / 打卡。收录 PR 等规则稳定后再提，避免刚开仓就被标停更。
+
+### 搜索本仓库时可用的关键词
+
+GitHub 搜索示例：`GKD 领券`、`GKD 拼多多`、`GKD 订阅 MarsGao`、`topic:gkd-subscription`。
+
+仓库 Topics 已打：`gkd`、`gkd-subscription`、`pinduoduo`、`coupon`、`android-automation`。
 
 ---
 
@@ -54,21 +77,19 @@ https://ghfast.top/https://raw.githubusercontent.com/MarsGao/GkAndroidLabGKDCoup
 | 1 | **百亿补贴会员每日打卡** | 进入「百亿补贴会员」页精确点击「打卡」按钮。每天最多触发 1 次，严格避开「打卡送积分」「待打卡」等静态标题。 | 领券签到 | ✅ 活跃 |
 | 2 | **会员等级礼包无门槛券领取** | 在「百亿补贴会员等级中心」，自动点击等级礼包的「领取」按钮。领完后文案自动变为「去使用」，规则天然失效，绝不误触进商品页。 | 领券签到 | ✅ 活跃 |
 | 3 | **关闭诱导弹窗** | 拦截并关闭「残忍拒绝 / 以后再说 / 我知道了 / 开心收下」以及弹窗右上角关闭按钮，杜绝流氓分享裂变。 | 弹窗处理 | ✅ 活跃 |
-| 4 | **百亿补贴主会场/消费券立即领取** | 在百亿补贴主会场与「百亿消费券」专属会场，自动点击「立即领取 / 一键全领 / 立即点亮 / 开心收下」。严禁点击「去使用」与「抽福袋」。 | 领券签到 | ✅ 活跃 |
+| 4 | **百亿补贴主会场/消费券立即领取** | 须先点「百亿消费券」进入专属会场，再点「立即领取 / 一键全领 / 立即点亮 / 开心收下」。严禁「去使用」「抽福袋」。 | 领券签到 | ⏳ 待真机验证（等手机连接） |
 
 ---
 
 ## 规则真机验证与闭环保证
 
-本项目所有规则均拒绝「开环盲点」（点了就算成功），坚持「状态机闭环确认」：
+拒绝「点了就算成功」。规则 1–3（会员打卡、等级礼包、关弹窗）已在 OnePlus 13 上走过闭环。**规则 4（百亿消费券会场立即领取）按用户要求暂缓**，等设备重新连接后再跑 ADB。
 
-1. **会场准入路径验证**：
-   - 首页 -> 百亿补贴频道 -> 点击 **「百亿消费券」** 入口卡片 -> 直达 **消费券专属会场**（`com.xunmeng.pinduoduo.activity.NewPageActivity`）。
-2. **节点特征断言**：
-   - 经真机 dump 验证，消费券会场内 3 张优惠券对应 `TextView` 控件，文案均为 `立即领取`（坐标区间：`[154,1267]`、`[619,1267]`、`[1085,1267]`）。
-   - 顶部 8 天连续打卡福利对应 `TextView` 文案为 `立即点亮`（坐标区间：`[1046,521]`），同样纳入自动化覆盖。
-3. **自动化测试套件**：
-   - 本项目内置自动化验证脚本：[`scripts/verify_pdd_coupon_venue.py`](scripts/verify_pdd_coupon_venue.py)，可通过 ADB 自动化驱动导航、入场点击与节点断言。
+计划路径（未执行前不当作已验证）：
+
+1. 进入百亿补贴频道 → **必须点击「百亿消费券」** 才能进入专属会场（不能只停在主会场）。
+2. Dump UI，断言会场特征后，再匹配「立即领取 / 一键全领 / 开心收下 / 立即点亮」。
+3. 脚本：[`scripts/verify_pdd_coupon_venue.py`](scripts/verify_pdd_coupon_venue.py)（设备离线时会直接退出）。
 
 ---
 

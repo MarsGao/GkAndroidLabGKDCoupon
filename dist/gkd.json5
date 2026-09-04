@@ -1,6 +1,7 @@
-// MarsGao薅羊毛领券 · GKD第三方订阅规则
-// 官方格式参考：https://gkd.li/guide/subscription
-// 订阅地址：https://raw.githubusercontent.com/MarsGao/GkAndroidLabGKDCoupon/main/dist/gkd.json5
+// GKD订阅 / GKD规则 / GKD第三方订阅 / MarsGao薅羊毛领券
+// 拼多多领券、百亿补贴打卡、无门槛券、自动签到（非广告拦截大全）
+// 格式：https://gkd.li/guide/subscription
+// 导入：https://raw.githubusercontent.com/MarsGao/GkAndroidLabGKDCoupon/main/dist/gkd.json5
 {
   id: 82640113,
   name: 'MarsGao薅羊毛领券',

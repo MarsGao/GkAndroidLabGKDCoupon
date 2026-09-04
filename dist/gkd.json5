@@ -5,7 +5,7 @@
 {
   id: 82640113,
   name: 'MarsGao薅羊毛领券',
-  version: 2,
+  version: 3,
   author: 'MarsGao',
   updateUrl: 'https://raw.githubusercontent.com/MarsGao/GkAndroidLabGKDCoupon/main/dist/gkd.json5',
   checkUpdateUrl: 'https://raw.githubusercontent.com/MarsGao/GkAndroidLabGKDCoupon/main/dist/gkd.version.json5',
@@ -97,15 +97,57 @@
         },
         {
           key: 4,
-          name: '领券签到-百亿补贴主会场立即领取',
-          desc: '百亿补贴主会场/消费券「立即领取/一键全领/开心收下/立即点亮」。严禁点「去使用」（会进商品页），不点「抽福袋」（裂变）。',
+          name: '领券签到-进入百亿消费券会场',
+          desc: '在百亿补贴主会场，点击「百亿消费券 …待领」入口卡进入消费券专属会场。不点「抽福袋/去许愿」裂变入口。',
           enable: true,
           fastQuery: true,
-          actionMaximum: 20,
+          actionMaximum: 1,
+          resetMatch: 'app',
+          matchTime: 20000,
+          actionDelay: 300,
+          activityIds: [
+            'com.xunmeng.pinduoduo.activity.NewPageActivity',
+            'com.xunmeng.pinduoduo.activity.NewPageMaskActivity',
+          ],
           rules: [
             {
               key: 0,
-              matches: '[text="立即领取" || text="一键全领" || text="开心收下" || text="立即点亮"][visibleToUser=true]',
+              name: '百亿消费券待领入口（完整文案）',
+              // 用户当前页可见：「百亿消费券 100元券待领 >」
+              matches: '[text*="百亿消费券"][text*="待领"][visibleToUser=true]',
+            },
+            {
+              key: 1,
+              name: '百亿消费券入口（短文案兜底）',
+              matches: '[text*="百亿消费券"][visibleToUser=true]',
+            },
+            {
+              key: 2,
+              name: 'content-desc 兜底',
+              matches: '[desc*="百亿消费券"][visibleToUser=true]',
+            },
+          ],
+        },
+        {
+          key: 5,
+          name: '领券签到-百亿消费券会场立即领取',
+          desc: '已进入消费券会场后，点「立即领取/一键全领/开心收下/立即点亮」。严禁点「去使用」（进商品页），不点「抽福袋」。',
+          enable: true,
+          fastQuery: true,
+          actionMaximum: 20,
+          matchTime: 20000,
+          activityIds: [
+            'com.xunmeng.pinduoduo.activity.NewPageActivity',
+            'com.xunmeng.pinduoduo.activity.NewPageMaskActivity',
+          ],
+          rules: [
+            {
+              key: 0,
+              // 同屏需有消费券会场特征，避免在主会场误点其它「立即领取」
+              matches: [
+                '[text*="消费券" || text*="双重补贴" || text*="地区专享"][visibleToUser=true]',
+                '[text="立即领取" || text="一键全领" || text="开心收下" || text="立即点亮"][visibleToUser=true]',
+              ],
             },
           ],
         },

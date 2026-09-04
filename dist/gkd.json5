@@ -5,7 +5,7 @@
 {
   id: 82640113,
   name: 'MarsGao薅羊毛领券',
-  version: 3,
+  version: 4,
   author: 'MarsGao',
   updateUrl: 'https://raw.githubusercontent.com/MarsGao/GkAndroidLabGKDCoupon/main/dist/gkd.json5',
   checkUpdateUrl: 'https://raw.githubusercontent.com/MarsGao/GkAndroidLabGKDCoupon/main/dist/gkd.version.json5',
@@ -98,7 +98,7 @@
         {
           key: 4,
           name: '领券签到-进入百亿消费券会场',
-          desc: '在百亿补贴主会场，点击「百亿消费券 …待领」入口卡进入消费券专属会场。不点「抽福袋/去许愿」裂变入口。',
+          desc: '主会场「百亿消费券/…待领」入口。注意：多数机型上该 H5 横滑卡无障碍树为空，GKD 可能点不到；请用 scripts/enter_coupon_venue.py（ADB）进场，进场后由规则5自动领。',
           enable: true,
           fastQuery: true,
           actionMaximum: 1,
@@ -112,30 +112,34 @@
           rules: [
             {
               key: 0,
-              name: '百亿消费券待领入口（完整文案）',
-              // 用户当前页可见：「百亿消费券 100元券待领 >」
+              name: '同节点含百亿消费券+待领',
               matches: '[text*="百亿消费券"][text*="待领"][visibleToUser=true]',
             },
             {
               key: 1,
-              name: '百亿消费券入口（短文案兜底）',
-              matches: '[text*="百亿消费券"][visibleToUser=true]',
+              name: '拆分节点：先见百亿消费券，再点待领',
+              // 文案常拆成两个 TextView；数组匹配点最后一个
+              matches: [
+                '[text*="百亿消费券"][visibleToUser=true]',
+                '[text*="待领"][visibleToUser=true]',
+              ],
             },
             {
               key: 2,
-              name: 'content-desc 兜底',
-              matches: '[desc*="百亿消费券"][visibleToUser=true]',
+              name: '短文案 / desc 兜底',
+              matches: '[text*="百亿消费券" || desc*="百亿消费券" || text*="100元券待领"][visibleToUser=true]',
             },
           ],
         },
         {
           key: 5,
           name: '领券签到-百亿消费券会场立即领取',
-          desc: '已进入消费券会场后，点「立即领取/一键全领/开心收下/立即点亮」。严禁点「去使用」（进商品页），不点「抽福袋」。',
+          desc: '已进入「消费券」会场（有双重补贴/地区专享）后，自动点「立即领取/一键全领/开心收下/立即点亮」。已领后变「去使用」则不再点。不点抽福袋。真机已验证三券领取→去使用。',
           enable: true,
           fastQuery: true,
           actionMaximum: 20,
-          matchTime: 20000,
+          matchTime: 25000,
+          actionDelay: 400,
           activityIds: [
             'com.xunmeng.pinduoduo.activity.NewPageActivity',
             'com.xunmeng.pinduoduo.activity.NewPageMaskActivity',
@@ -143,9 +147,9 @@
           rules: [
             {
               key: 0,
-              // 同屏需有消费券会场特征，避免在主会场误点其它「立即领取」
+              name: '会场内立即领取',
               matches: [
-                '[text*="消费券" || text*="双重补贴" || text*="地区专享"][visibleToUser=true]',
+                '[text="消费券" || text*="双重补贴" || text*="地区专享" || text*="共"][visibleToUser=true]',
                 '[text="立即领取" || text="一键全领" || text="开心收下" || text="立即点亮"][visibleToUser=true]',
               ],
             },

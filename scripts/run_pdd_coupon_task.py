@@ -68,7 +68,10 @@ def step_checkin(ui: AdbUIHelper, report: TaskReport, observe: bool) -> StepResu
     if len(nodes) > 1:
         report.add("member_checkin", StepResult.NEEDS_REVIEW, f"打卡候选歧义 {len(nodes)}")
         return StepResult.NEEDS_REVIEW
-    ui.tap_node(nodes[0], delay=1.5)
+    # 文案中心常偏下；略上移点到橙色按钮本体
+    n = nodes[0]
+    cx, cy = n["center"]
+    ui.tap(cx, max(cy - 40, n["bounds"][1] + 8), delay=1.5)
     root2 = ui.dump_ui(require_nodes=True)
     after = ui.find_nodes(root2, text_regex=r"^打卡$")
     sig2 = page_signals(ui, root2)

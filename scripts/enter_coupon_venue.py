@@ -81,10 +81,22 @@ def run(serial: str, observe: bool, open_subsidy: bool, allow_fallback: str | No
     try:
         ui = make_helper(serial)
         if open_subsidy:
+            # 稳定路径：百亿补贴搜索深链 → 点消费券卡标题区（抽福袋上方）
+            # brand_rebate / 裸 coupons.html 不稳定（失败页或「我的优惠券」）
             ui.run_shell(
-                "am start -a android.intent.action.VIEW -d 'pinduoduo://com.xunmeng.pinduoduo/brand_rebate.html'"
+                "am start -a android.intent.action.VIEW -d "
+                "'pinduoduo://com.xunmeng.pinduoduo/search_result.html?search_key=%E7%99%BE%E4%BA%BF%E8%A1%A5%E8%B4%B4'"
             )
-            time.sleep(5)
+            time.sleep(4.5)
+            # 右卡「百亿消费券」标题区（抽福袋按钮约 y=1065，点其上方）
+            ui.tap(1000, 980, delay=3.5)
+            ok, why = venue_ok(ui)
+            if ok:
+                report.add("enter", StepResult.VERIFIED, f"bybt_search+card_tap proof={why}")
+                print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
+                return 0
+            report.add("enter", StepResult.NEEDS_REVIEW, "搜索进百亿补贴后点消费券卡未进会场")
+            # fall through to a11y/image attempts below
 
         # 优先无障碍：若已有「百亿消费券」文本节点则点它
         root = ui.dump_ui()

@@ -115,20 +115,29 @@ def page_signals(ui: AdbUIHelper, root=None) -> dict[str, bool]:
         "region_tab": "地区专享" in joined,
         "claimable": bool(ui.find_nodes(root, text_regex=r"^立即领取$")),
         "go_use": bool(ui.find_nodes(root, text_regex=r"^去使用$")),
-        "light_available": bool(ui.find_nodes(root, text_regex=r"^立即点亮$")),
-        "light_done": "今日已点亮" in joined,
+        "light_available": bool(
+            ui.find_nodes(root, text_regex=r"^(立即点亮|解锁点亮)$")
+        ),
+        "light_done": "今日已点亮" in joined or "已点亮" in joined,
         "product_trap": ("去用补贴" in joined or "逛逛别的" in joined)
         or ("款式" in joined and "立即领取" not in joined and "地区专享" not in joined),
         "share_trap": any(k in joined for k in ("抽福袋", "微信", "邀请好友", "助力")),
     }
 
 
-def assert_script_mode_preflight(ui: AdbUIHelper) -> None:
-    """脚本任务模式：确认前台是拼多多；提醒人工停用重叠 GKD 规则（无法可靠 API 核验）。"""
+def assert_script_mode_preflight(ui: AdbUIHelper, confirm_gkd_off: bool = False) -> None:
+    """脚本任务模式硬闸：前台拼多多 + 显式确认已停用重叠 GKD 点击规则。"""
     pkg = ui.foreground_package()
     if pkg and pkg != PDD_PKG:
         raise AdbError(f"前台包名不是拼多多: {pkg}")
+    env_ok = os.environ.get("PDD_CONFIRM_GKD_OFF", "").strip() in ("1", "true", "yes")
+    if not (confirm_gkd_off or env_ok):
+        raise AdbError(
+            "脚本模式拒绝执行：请先停用 MarsGao key4/5/6/7 及第三方重叠拼多多点击规则，"
+            "并传入 --confirm-gkd-off（或环境变量 PDD_CONFIRM_GKD_OFF=1）。"
+            "无法通过 API 核验 GKD 开关；PC 锁不能证明互斥。"
+        )
     print(
-        "[preflight] 脚本任务模式：请确认本订阅 key5 及第三方订阅中重叠的拼多多点击规则已停用；"
-        "PC 锁不能证明与手机 GKD 互斥。"
+        "[preflight] 已确认 GKD 重叠点击规则停用；请保证手机订阅已到 v6，"
+        "且无障碍正常（首页勿显示「无障碍发生故障」）。"
     )

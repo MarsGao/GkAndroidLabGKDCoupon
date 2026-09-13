@@ -63,8 +63,8 @@ def test_checkin_title_not_exact(helper: AdbUIHelper):
 def test_dismiss_safe_patterns():
     assert "去使用" not in SAFE_DISMISS_TEXT
     assert "继续" not in SAFE_DISMISS_TEXT
-    assert "开心收下" not in SAFE_DISMISS_TEXT
-    # 匹配动作只允许 SAFE_DISMISS_TEXT；业务动作文案不得进入该常量
+    # 开心收下仅作关弹窗，不作领取
+    assert re.search(r"开心收下", SAFE_DISMISS_TEXT)
     assert re.search(r"残忍拒绝", SAFE_DISMISS_TEXT)
 
 

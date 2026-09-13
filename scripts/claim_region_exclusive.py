@@ -188,12 +188,19 @@ def scroll_coupon_area(ui: AdbUIHelper, horizontal: bool) -> None:
         ui.swipe(w // 2, int(h * 0.72), w // 2, int(h * 0.42), 400)
 
 
-def run(serial: str, observe: bool, skip_tab: bool, max_claims: int, max_rounds: int) -> int:
+def run(
+    serial: str,
+    observe: bool,
+    skip_tab: bool,
+    max_claims: int,
+    max_rounds: int,
+    confirm_gkd_off: bool = False,
+) -> int:
     report = TaskReport(mode="observe" if observe else "script", serial=serial)
     try:
         ui = make_helper(serial)
         if not observe:
-            assert_script_mode_preflight(ui)
+            assert_script_mode_preflight(ui, confirm_gkd_off=confirm_gkd_off)
             ui.dismiss_popups(max_attempts=2)
 
         tab_res = ensure_region_tab(ui, report, skip=skip_tab)
@@ -268,8 +275,20 @@ def main() -> int:
     ap.add_argument("--skip-tab", action="store_true")
     ap.add_argument("--max-claims", type=int, default=8)
     ap.add_argument("--max-rounds", type=int, default=10)
+    ap.add_argument(
+        "--confirm-gkd-off",
+        action="store_true",
+        help="确认已停用重叠 GKD 拼多多点击规则（脚本模式必填，或设 PDD_CONFIRM_GKD_OFF=1）",
+    )
     args = ap.parse_args()
-    return run(args.serial, args.observe, args.skip_tab, args.max_claims, args.max_rounds)
+    return run(
+        args.serial,
+        args.observe,
+        args.skip_tab,
+        args.max_claims,
+        args.max_rounds,
+        confirm_gkd_off=args.confirm_gkd_off,
+    )
 
 
 if __name__ == "__main__":

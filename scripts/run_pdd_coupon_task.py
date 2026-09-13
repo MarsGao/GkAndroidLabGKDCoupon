@@ -227,19 +227,23 @@ def run_stages(
     observe: bool,
     stages: list[str],
     browse_sec: float,
+    confirm_gkd_off: bool = False,
 ) -> int:
     report = TaskReport(mode="observe" if observe else "script", serial=serial)
     try:
         ui = make_helper(serial)
         if "preflight" in stages:
             if not observe:
-                assert_script_mode_preflight(ui)
+                assert_script_mode_preflight(ui, confirm_gkd_off=confirm_gkd_off)
             ui.unlock_and_wake()
             report.add(
                 "preflight",
                 StepResult.VERIFIED,
                 f"fg={ui.foreground_package()} {ui.screen_width}x{ui.screen_height}",
             )
+        elif not observe:
+            # 即使跳过 preflight 阶段，脚本模式仍需硬闸
+            assert_script_mode_preflight(ui, confirm_gkd_off=confirm_gkd_off)
 
         stop_on = {StepResult.FAILED, StepResult.NEEDS_REVIEW}
 
@@ -311,6 +315,11 @@ def main() -> int:
     )
     ap.add_argument("--from-stage", default=None, help="从该阶段起执行到结束")
     ap.add_argument("--browse-sec", type=float, default=10.0)
+    ap.add_argument(
+        "--confirm-gkd-off",
+        action="store_true",
+        help="确认已停用重叠 GKD 拼多多点击规则（脚本模式必填，或设 PDD_CONFIRM_GKD_OFF=1）",
+    )
     args = ap.parse_args()
 
     stages = [s.strip() for s in args.stages.split(",") if s.strip()]
@@ -324,7 +333,13 @@ def main() -> int:
         if s not in ALL_STAGES:
             print(f"未知阶段: {s}", file=sys.stderr)
             return 2
-    return run_stages(args.serial, args.observe, stages, args.browse_sec)
+    return run_stages(
+        args.serial,
+        args.observe,
+        stages,
+        args.browse_sec,
+        confirm_gkd_off=args.confirm_gkd_off,
+    )
 
 
 if __name__ == "__main__":

@@ -1,117 +1,182 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-进入拼多多「百亿消费券」会场（ADB 坐标/红标题条定位）。
+进入拼多多「百亿消费券」会场。
 
-原因：百亿补贴主会场 H5 横滑卡在多数机型上无障碍树几乎为空，
-GKD 文本规则无法匹配「百亿消费券 …待领」。进会场后节点正常，
-由 GKD 规则 key5 自动点「立即领取」。
+主会场 H5 常无障碍空树，优先截图识别红标题条；
+失败默认停机（needs_review），不自动盲点固定坐标。
+缺 Pillow/NumPy 时明确失败，不改写为危险兜底。
 
-用法（需已停在百亿补贴主会场，或本脚本会尝试 deeplink）：
+用法：
+  python scripts/enter_coupon_venue.py --observe
   python scripts/enter_coupon_venue.py
-  python scripts/enter_coupon_venue.py --serial 3B159H003D600000
+  python scripts/enter_coupon_venue.py --allow-fallback-xy 603,777   # 显式才允许
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import os
-import subprocess
 import sys
 import time
 from collections import Counter
+from pathlib import Path
 
-SERIAL_DEFAULT = os.environ.get("ANDROID_SERIAL", "3B159H003D600000")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-
-def adb(serial: str, args: list[str]) -> str:
-    cmd = ["adb", "-s", serial, *args]
-    r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="ignore")
-    return (r.stdout or "") + (r.stderr or "")
-
-
-def shell(serial: str, cmd: str) -> str:
-    return adb(serial, ["shell", cmd])
-
-
-def screencap_local(serial: str, local_path: str) -> None:
-    shell(serial, "screencap -p /sdcard/enter_coupon.png")
-    adb(serial, ["pull", "/sdcard/enter_coupon.png", local_path])
+from pdd_common import (  # noqa: E402
+    SERIAL_DEFAULT,
+    StepResult,
+    TaskReport,
+    make_helper,
+    page_signals,
+)
+from adb_ui_helper import AdbError  # noqa: E402
 
 
 def find_red_header_tap(png_path: str) -> tuple[int, int] | None:
     try:
         from PIL import Image
         import numpy as np
-    except ImportError:
-        return None
+    except ImportError as e:
+        raise AdbError(
+            "缺少 Pillow/NumPy，无法做图像定位。请 uv sync 后重试；"
+            "不会自动退回固定坐标。"
+        ) from e
+
     im = Image.open(png_path).convert("RGB")
-    arr = __import__("numpy").array(im)
+    arr = np.array(im)
     r, g, b = arr[:, :, 0].astype(int), arr[:, :, 1].astype(int), arr[:, :, 2].astype(int)
     mask = (r > 160) & (g < 90) & (b < 100) & (r > g + 60)
-    ys, xs = __import__("numpy").where(mask)
+    ys, xs = np.where(mask)
+    # 历史证据：红条约在 y=750–950（OnePlus 13）；低置信度则放弃
     sel = (ys > 750) & (ys < 950)
     ys, xs = ys[sel], xs[sel]
-    if len(xs) < 50:
+    if len(xs) < 80:
         return None
     ym = Counter(ys.tolist()).most_common(1)[0][0]
     row = sorted(xs[abs(ys - ym) < 5].tolist())
-    if len(row) < 30:
+    if len(row) < 40:
         return None
-    # 「百亿消费券」四字在红条左侧；点文字即可进场，勿点右侧商品图/下方抽福袋
+    # 「百亿消费券」在红条左侧文字区；勿点右侧商品图
     tapx = row[0] + int((row[-1] - row[0]) * 0.22)
     tapy = ym + 8
     return tapx, tapy
 
 
-def dump_has_venue(serial: str) -> bool:
-    shell(serial, "uiautomator dump /sdcard/enter_coupon.xml")
-    time.sleep(0.5)
-    out = shell(serial, "cat /sdcard/enter_coupon.xml")
-    return any(k in out for k in ("双重补贴", "地区专享", "立即领取", ">消费券<"))
+def venue_ok(ui) -> tuple[bool, str]:
+    root = ui.dump_ui(require_nodes=True)
+    sig = page_signals(ui, root)
+    if sig["venue"]:
+        return True, "venue_signals"
+    # 较弱：有地区专享+立即领取/去使用
+    if sig["region_tab"] and (sig["claimable"] or sig["go_use"]):
+        return True, "region+claim_state"
+    return False, "no_venue_features"
+
+
+def run(serial: str, observe: bool, open_subsidy: bool, allow_fallback: str | None) -> int:
+    report = TaskReport(mode="observe" if observe else "script", serial=serial)
+    try:
+        ui = make_helper(serial)
+        if open_subsidy:
+            ui.run_shell(
+                "am start -a android.intent.action.VIEW -d 'pinduoduo://com.xunmeng.pinduoduo/brand_rebate.html'"
+            )
+            time.sleep(5)
+
+        # 优先无障碍：若已有「百亿消费券」文本节点则点它
+        root = ui.dump_ui()
+        entry = ui.find_nodes(root, text_regex=r"百亿消费券")
+        xy = None
+        method = ""
+        if entry:
+            # 多候选歧义 → 停机
+            if len(entry) > 2:
+                report.add(
+                    "enter",
+                    StepResult.NEEDS_REVIEW,
+                    f"百亿消费券节点过多({len(entry)})，拒绝盲选",
+                )
+                print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
+                return 2
+            xy = entry[0]["center"]
+            method = "a11y_text"
+
+        if xy is None:
+            local = os.path.abspath(
+                os.path.join(os.path.dirname(__file__), "..", "data", "pdd_enter_probe.png")
+            )
+            os.makedirs(os.path.dirname(local), exist_ok=True)
+            ui.run_shell("screencap -p /sdcard/enter_coupon.png", check=False)
+            ui.run_cmd(["pull", "/sdcard/enter_coupon.png", local], check=False)
+            if not os.path.exists(local):
+                report.add("enter", StepResult.FAILED, "截图拉取失败")
+                print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
+                return 3
+            xy = find_red_header_tap(local)
+            method = "red_header_image"
+
+        if xy is None:
+            if allow_fallback:
+                fx, fy = map(int, allow_fallback.split(","))
+                xy = (fx, fy)
+                method = "explicit_fallback_xy"
+                report.add(
+                    "enter_locate",
+                    StepResult.NEEDS_REVIEW,
+                    f"图像未识别，用户显式允许坐标 {xy}",
+                )
+            else:
+                report.add(
+                    "enter",
+                    StepResult.NEEDS_REVIEW,
+                    "无法定位入口（无节点且红条置信不足）；未启用 --allow-fallback-xy",
+                )
+                print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
+                return 2
+
+        if observe:
+            report.add("enter", StepResult.VERIFIED, f"observe_only method={method} xy={xy}")
+            print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
+            return 0
+
+        # 不点「空白区」——可能点到别的入口
+        ui.tap(xy[0], xy[1], delay=3.0)
+        ok, why = venue_ok(ui)
+        if ok:
+            report.add("enter", StepResult.VERIFIED, f"method={method} xy={xy} proof={why}")
+            print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
+            return 0
+
+        report.add(
+            "enter",
+            StepResult.FAILED,
+            f"点击后未见会场特征 method={method} xy={xy}",
+        )
+        print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
+        return 1
+    except AdbError as e:
+        report.add("adb", StepResult.FAILED, str(e))
+        print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
+        return 3
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--serial", default=SERIAL_DEFAULT)
-    ap.add_argument("--open-subsidy", action="store_true", help="先 deeplink 打开百亿补贴（可能加载失败）")
-    ap.add_argument("--fallback-xy", default="603,777", help="图像定位失败时的兜底坐标（百亿消费券文字）")
+    ap.add_argument("--observe", action="store_true")
+    ap.add_argument("--open-subsidy", action="store_true")
+    ap.add_argument(
+        "--allow-fallback-xy",
+        default=None,
+        metavar="X,Y",
+        help="仅当显式传入时才允许固定坐标（历史证据 603,777）",
+    )
     args = ap.parse_args()
-    serial = args.serial
-
-    devices = adb(serial, ["devices"])
-    if serial not in devices or "device" not in devices:
-        print(f"设备未在线: {serial}\n{devices}")
-        return 1
-
-    if args.open_subsidy:
-        shell(serial, "am start -a android.intent.action.VIEW -d 'pinduoduo://com.xunmeng.pinduoduo/brand_rebate.html'")
-        time.sleep(5)
-
-    local = os.path.join(os.path.dirname(__file__), "..", "pdd_enter_probe.png")
-    local = os.path.abspath(local)
-    screencap_local(serial, local)
-    xy = find_red_header_tap(local)
-    if xy is None:
-        fx, fy = map(int, args.fallback_xy.split(","))
-        xy = (fx, fy)
-        print(f"[!] 红标题条未识别，使用兜底坐标 {xy}")
-    else:
-        print(f"[+] 红标题条定位 tap={xy}")
-
-    # 避开微信通知：先轻点空白
-    shell(serial, "input tap 720 500")
-    time.sleep(0.3)
-    shell(serial, f"input tap {xy[0]} {xy[1]}")
-    time.sleep(3.0)
-
-    if dump_has_venue(serial):
-        print("[+] 已进入消费券会场（检测到双重补贴/立即领取等）。请保持页面，让 GKD 规则5自动点领取。")
-        return 0
-
-    print("[-] 未检测到会场特征。请确认当前在百亿补贴主会场且「百亿消费券」红卡可见后重试。")
-    return 2
+    return run(args.serial, args.observe, args.open_subsidy, args.allow_fallback_xy)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

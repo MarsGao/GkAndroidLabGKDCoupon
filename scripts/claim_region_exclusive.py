@@ -1,180 +1,275 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-消费券会场：切换「地区专享」并逐个点击「立即领取」。
+地区专享：单张券闭环（观察 → 唯一目标 → 单次动作 → 核验）。
 
-前置：已在拼多多「消费券」会场（可见双重补贴/地区专享）。
-红线：不点去使用/抽福袋；若误进商品/国补弹窗则返回。
+结果：verified | already_claimed | unavailable | failed | needs_review
+不做：一次 dump 连点多张；无状态变化不算成功；固定坐标盲点。
 
 用法：
+  python scripts/claim_region_exclusive.py --observe
   python scripts/claim_region_exclusive.py
+  python scripts/claim_region_exclusive.py --skip-tab --max-claims 5
 """
 
 from __future__ import annotations
 
 import argparse
-import os
-import re
-import subprocess
+import json
+import sys
 import time
+from pathlib import Path
 
-SERIAL_DEFAULT = os.environ.get("ANDROID_SERIAL", "3B159H003D600000")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-
-def adb(serial: str, args: list[str]) -> str:
-    r = subprocess.run(
-        ["adb", "-s", serial, *args],
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="ignore",
-    )
-    return (r.stdout or "") + (r.stderr or "")
-
-
-def shell(serial: str, cmd: str) -> str:
-    return adb(serial, ["shell", cmd])
+from pdd_common import (  # noqa: E402
+    SERIAL_DEFAULT,
+    StepResult,
+    TaskReport,
+    assert_script_mode_preflight,
+    make_helper,
+    page_signals,
+)
+from adb_ui_helper import AdbError, AdbUIHelper  # noqa: E402
 
 
-def dump_ui(serial: str) -> str:
-    t = ""
-    for _ in range(5):
-        shell(serial, "uiautomator dump /sdcard/region_claim.xml")
-        time.sleep(0.4)
-        t = shell(serial, "cat /sdcard/region_claim.xml")
-        if "<hierarchy" in t and len(t) > 3000:
-            return t
-    return t
-
-
-def find_text(xml: str, exact: str) -> list[dict]:
-    hits: list[dict] = []
-    for m in re.finditer(r"<node[^>]+>", xml):
-        tag = m.group(0)
-        tx_m = re.search(r'text="([^"]*)"', tag)
-        b = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', tag)
-        tx = tx_m.group(1) if tx_m else ""
-        if tx != exact or not b:
+def _claim_candidates(ui: AdbUIHelper, root) -> list[dict]:
+    nodes = ui.find_nodes(root, text_regex=r"^立即领取$")
+    out = []
+    for n in nodes:
+        cx, cy = n["center"]
+        x1, y1, x2, y2 = n["bounds"]
+        w, h = x2 - x1, y2 - y1
+        if cy < 350 or cy > ui.screen_height * 0.92:
             continue
-        a, y1, c, y2 = map(int, b.groups())
-        w, h = c - a, y2 - y1
-        if w < 60 or h < 20 or (w > 1400 and h > 2500):
+        if w > 520 or h > 220:
             continue
-        cx, cy = (a + c) // 2, (y1 + y2) // 2
-        if cx < 90 or cx > 1350 or cy < 180 or cy > 3000:
-            continue
-        hits.append({"cx": cx, "cy": cy, "y1": y1, "w": w, "bounds": (a, y1, c, y2)})
-    uniq: list[dict] = []
-    for h in hits:
-        if not any(abs(h["cx"] - u["cx"]) < 35 and abs(h["cy"] - u["cy"]) < 35 for u in uniq):
-            uniq.append(h)
-    return uniq
+        out.append(n)
+    out.sort(key=lambda z: (z["center"][1], z["center"][0]))
+    return out
 
 
-def is_trap(xml: str) -> bool:
-    if "去用补贴" in xml or "逛逛别的" in xml:
-        return True
-    if "款式" in xml and "立即领取" not in xml and "地区专享" not in xml:
-        return True
-    return False
+def _fingerprint(node: dict) -> str:
+    x1, y1, x2, y2 = node["bounds"]
+    return f"立即领取@{x1},{y1},{x2},{y2}"
 
 
-def escape_trap(serial: str) -> None:
-    xml = dump_ui(serial)
-    for h in find_text(xml, "逛逛别的"):
-        shell(serial, f"input tap {h['cx']} {h['cy']}")
-        time.sleep(0.8)
-        return
-    if is_trap(xml):
-        shell(serial, "input keyevent KEYCODE_BACK")
-        time.sleep(1.0)
+def ensure_region_tab(ui: AdbUIHelper, report: TaskReport, skip: bool) -> StepResult:
+    root = ui.dump_ui(require_nodes=True)
+    sig = page_signals(ui, root)
+    if not sig["venue"] and not sig["region_tab"]:
+        report.add("region_tab", StepResult.FAILED, "不在消费券会场（缺双重补贴/地区专享）")
+        return StepResult.FAILED
+    if skip:
+        report.add("region_tab", StepResult.VERIFIED, "skip-tab")
+        return StepResult.VERIFIED
 
-
-def switch_region_tab(serial: str) -> bool:
-    xml = dump_ui(serial)
-    tabs = find_text(xml, "地区专享")
+    tabs = ui.find_nodes(root, text_regex=r"^地区专享$")
     if not tabs:
-        print("[-] 未找到「地区专享」")
-        return False
-    # 消费券会场 Tab 通常在上半屏；多个时取 y 较小者
-    top = sorted([t for t in tabs if t["y1"] < 1600], key=lambda t: t["y1"]) or sorted(
-        tabs, key=lambda t: t["y1"]
+        report.add("region_tab", StepResult.UNAVAILABLE, "无「地区专享」节点")
+        return StepResult.UNAVAILABLE
+
+    # 上半屏 Tab；多候选取 y 最小
+    upper = [t for t in tabs if t["center"][1] < ui.screen_height * 0.55]
+    target = sorted(upper or tabs, key=lambda t: t["center"][1])[0]
+    before = _fingerprint(target) if False else f"tab@{target['center']}"
+    ui.tap_node(target, delay=2.0)
+
+    root2 = ui.dump_ui(require_nodes=True)
+    sig2 = page_signals(ui, root2)
+    # 切 Tab 后仍应在会场；若误进商品则失败
+    if sig2["product_trap"]:
+        ui.back(delay=1.0)
+        report.add("region_tab", StepResult.FAILED, "切 Tab 后疑似商品页", before=before)
+        return StepResult.FAILED
+    if not sig2["region_tab"]:
+        report.add("region_tab", StepResult.NEEDS_REVIEW, "点击后未见地区专享文案", before=before)
+        return StepResult.NEEDS_REVIEW
+
+    report.add("region_tab", StepResult.VERIFIED, "已点击并仍见地区专享", before=before)
+    return StepResult.VERIFIED
+
+
+def claim_one(ui: AdbUIHelper, report: TaskReport, idx: int) -> StepResult:
+    """每次重新 dump；只处理排序后第一张可点券。"""
+    root = ui.dump_ui(require_nodes=True)
+    sig = page_signals(ui, root)
+    if sig["product_trap"]:
+        report.add(f"claim[{idx}]", StepResult.FAILED, "商品/国补遮挡，停机")
+        return StepResult.FAILED
+    if not sig["venue"] and not sig["region_tab"]:
+        report.add(f"claim[{idx}]", StepResult.FAILED, "已离开会场")
+        return StepResult.FAILED
+
+    candidates = _claim_candidates(ui, root)
+    if not candidates:
+        if sig["go_use"] and not sig["claimable"]:
+            report.add(f"claim[{idx}]", StepResult.ALREADY_CLAIMED, "可见去使用、无立即领取")
+            return StepResult.ALREADY_CLAIMED
+        report.add(f"claim[{idx}]", StepResult.UNAVAILABLE, "本屏无立即领取")
+        return StepResult.UNAVAILABLE
+
+    if len(candidates) > 1:
+        # 只点第一张，但记录歧义供审查；不连点其余
+        pass
+
+    target = candidates[0]
+    fp = _fingerprint(target)
+    before_count = len(candidates)
+    before_go = len(ui.find_nodes(root, text_regex=r"^去使用$"))
+
+    ui.tap_node(target, delay=1.4)
+    root_after = ui.dump_ui(require_nodes=True)
+    sig_after = page_signals(ui, root_after)
+
+    if sig_after["product_trap"]:
+        # 尝试一次已知恢复：逛逛别的或返回
+        alt = ui.find_nodes(root_after, text_regex=r"^逛逛别的$")
+        if alt:
+            ui.tap_node(alt[0], delay=1.0)
+        else:
+            ui.back(delay=1.0)
+        report.add(
+            f"claim[{idx}]",
+            StepResult.FAILED,
+            "点击后误进商品/遮挡",
+            before=fp,
+        )
+        return StepResult.FAILED
+
+    after_nodes = _claim_candidates(ui, root_after)
+    after_go = len(ui.find_nodes(root_after, text_regex=r"^去使用$"))
+    still_same = any(_fingerprint(n) == fp for n in after_nodes)
+
+    if after_go > before_go and not still_same:
+        report.add(
+            f"claim[{idx}]",
+            StepResult.VERIFIED,
+            f"去使用 {before_go}->{after_go}；立即领取 {before_count}->{len(after_nodes)}",
+            before=fp,
+            after=f"go_use={after_go}",
+        )
+        return StepResult.VERIFIED
+
+    if not still_same and len(after_nodes) < before_count:
+        report.add(
+            f"claim[{idx}]",
+            StepResult.VERIFIED,
+            f"目标位消失；立即领取 {before_count}->{len(after_nodes)}",
+            before=fp,
+        )
+        return StepResult.VERIFIED
+
+    if still_same and after_go == before_go:
+        report.add(
+            f"claim[{idx}]",
+            StepResult.NEEDS_REVIEW,
+            "点击后目标仍在且去使用未增",
+            before=fp,
+        )
+        return StepResult.NEEDS_REVIEW
+
+    report.add(
+        f"claim[{idx}]",
+        StepResult.NEEDS_REVIEW,
+        "状态变化无法对应同一券",
+        before=fp,
     )
-    t = top[0]
-    # 点文字中心；若右侧有「送5折券」徽章，略偏右更稳
-    tapx = min(t["cx"] + 40, t["bounds"][2] + 30, 1250)
-    print(f"[+] 点击地区专享 {tapx},{t['cy']}")
-    shell(serial, f"input tap {tapx} {t['cy']}")
-    time.sleep(2.3)
-    return True
+    return StepResult.NEEDS_REVIEW
 
 
-def claim_visible(serial: str) -> int:
-    xml = dump_ui(serial)
-    claims = [
-        c
-        for c in find_text(xml, "立即领取")
-        if 350 < c["cy"] < 2900 and c["w"] < 520
-    ]
-    claimed = 0
-    for c in sorted(claims, key=lambda z: (z["cy"], z["cx"])):
-        shell(serial, f"input tap {c['cx']} {c['cy']}")
-        time.sleep(1.35)
-        after = dump_ui(serial)
-        if is_trap(after):
-            print(f"  [!] 误进商品 {c['cx']},{c['cy']}，返回")
-            escape_trap(serial)
-            continue
-        print(f"  [+] 领取 {c['cx']},{c['cy']}")
-        claimed += 1
-    return claimed
+def scroll_coupon_area(ui: AdbUIHelper, horizontal: bool) -> None:
+    """在券区滑动；用屏幕比例，避免写死全屏 y 业务坐标以外的魔法。"""
+    w, h = ui.screen_width, ui.screen_height
+    if horizontal:
+        y = int(h * 0.46)
+        ui.swipe(int(w * 0.82), y, int(w * 0.22), y, 380)
+    else:
+        ui.swipe(w // 2, int(h * 0.72), w // 2, int(h * 0.42), 400)
+
+
+def run(serial: str, observe: bool, skip_tab: bool, max_claims: int, max_rounds: int) -> int:
+    report = TaskReport(mode="observe" if observe else "script", serial=serial)
+    try:
+        ui = make_helper(serial)
+        if not observe:
+            assert_script_mode_preflight(ui)
+            ui.dismiss_popups(max_attempts=2)
+
+        tab_res = ensure_region_tab(ui, report, skip=skip_tab)
+        if tab_res in (StepResult.FAILED, StepResult.NEEDS_REVIEW) and not skip_tab:
+            print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
+            return 2
+
+        if observe:
+            root = ui.dump_ui(require_nodes=True)
+            sig = page_signals(ui, root)
+            cands = _claim_candidates(ui, root)
+            report.add(
+                "observe",
+                StepResult.VERIFIED if sig["region_tab"] else StepResult.NEEDS_REVIEW,
+                detail=f"claimable={len(cands)} go_use={sig['go_use']} venue={sig['venue']}",
+            )
+            print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
+            return 0
+
+        verified = 0
+        empty_streak = 0
+        claim_idx = 0
+        for round_i in range(max_rounds):
+            if verified >= max_claims:
+                break
+            res = claim_one(ui, report, claim_idx)
+            claim_idx += 1
+            if res == StepResult.VERIFIED:
+                verified += 1
+                empty_streak = 0
+                continue
+            if res == StepResult.FAILED:
+                break
+            if res in (StepResult.UNAVAILABLE, StepResult.ALREADY_CLAIMED):
+                scroll_coupon_area(ui, horizontal=True)
+                time.sleep(0.7)
+                res2 = claim_one(ui, report, claim_idx)
+                claim_idx += 1
+                if res2 == StepResult.VERIFIED:
+                    verified += 1
+                    empty_streak = 0
+                    continue
+                if res2 == StepResult.FAILED:
+                    break
+                scroll_coupon_area(ui, horizontal=False)
+                time.sleep(0.7)
+                empty_streak += 1
+                if empty_streak >= 2:
+                    report.add(
+                        "traverse_stop",
+                        StepResult.ALREADY_CLAIMED if res == StepResult.ALREADY_CLAIMED else StepResult.UNAVAILABLE,
+                        "相邻轮无新券，停止遍历（不代表全站领完）",
+                    )
+                    break
+            if res == StepResult.NEEDS_REVIEW:
+                # 不确定时停机，避免连点
+                break
+
+        print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
+        failed = any(r.result == StepResult.FAILED for r in report.records)
+        return 1 if failed else 0
+    except AdbError as e:
+        report.add("adb", StepResult.FAILED, str(e))
+        print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
+        return 3
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(description="地区专享单券闭环")
     ap.add_argument("--serial", default=SERIAL_DEFAULT)
-    ap.add_argument("--skip-tab", action="store_true", help="已在地区专享时跳过切 Tab")
+    ap.add_argument("--observe", action="store_true", help="只观察，不点击领取")
+    ap.add_argument("--skip-tab", action="store_true")
+    ap.add_argument("--max-claims", type=int, default=8)
+    ap.add_argument("--max-rounds", type=int, default=10)
     args = ap.parse_args()
-    serial = args.serial
-
-    if serial not in adb(serial, ["devices"]):
-        print("设备未在线")
-        return 1
-
-    escape_trap(serial)
-    if not args.skip_tab:
-        if not switch_region_tab(serial):
-            return 2
-
-    total = 0
-    empty = 0
-    for i in range(8):
-        escape_trap(serial)
-        n = claim_visible(serial)
-        total += n
-        print(f"round{i} +{n}")
-        if n == 0:
-            # 横滑券卡再试
-            shell(serial, "input swipe 1200 1450 350 1450 380")
-            time.sleep(0.9)
-            n2 = claim_visible(serial)
-            total += n2
-            if n2 == 0:
-                shell(serial, "input swipe 720 2300 720 1300 400")
-                time.sleep(0.9)
-                empty += 1
-                if empty >= 2:
-                    break
-            else:
-                empty = 0
-        else:
-            empty = 0
-
-    xml = dump_ui(serial)
-    left = find_text(xml, "立即领取")
-    used = find_text(xml, "去使用")
-    print(f"[done] claimed={total} remain_立即领取={len(left)} 去使用={len(used)}")
-    return 0
+    return run(args.serial, args.observe, args.skip_tab, args.max_claims, args.max_rounds)
 
 
 if __name__ == "__main__":

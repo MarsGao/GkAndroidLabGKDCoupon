@@ -1,0 +1,22 @@
+[project]
+name = "gk-android-lab-gkd-coupon"
+version = "0.6.0"
+description = "MarsGao薅羊毛领券 — GKD 订阅与拼多多领券脚本基线"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "pillow>=10.0.0",
+  "numpy>=1.26.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["scripts"]
+
+[tool.uv]
+package = false

@@ -1,100 +1,93 @@
 # GKD订阅 · GKD规则 · MarsGao薅羊毛领券
 
-**GKD 第三方订阅规则**（非官方）。给 [GKD](https://gkd.li) 用的远程订阅：拼多多领券、百亿补贴打卡、无门槛券、自动签到。  
-英文检索名：`GKD subscription` / `GKD rules` / `Pinduoduo coupon` / `GKD_THS_List`.
-
-GKD App **没有官方规则市场**，默认不含规则。要找到本仓库，请用 GitHub 搜：`GKD订阅`、`GKD规则`、`GKD 领券`、`GKD 拼多多`、`MarsGao薅羊毛`。
+**GKD 第三方订阅规则**（非官方）。给 [GKD](https://gkd.li) 用的远程订阅：拼多多领券、百亿补贴打卡、无门槛券。  
+完整业务闭环以 **脚本任务模式** 为主基线；GKD 仅执行已验证的局部规则。
 
 [![GKD](https://img.shields.io/badge/GKD-第三方订阅-blue.svg)](https://gkd.li/guide/subscription)
 [![订阅ID](https://img.shields.io/badge/id-82640113-green.svg)](dist/gkd.json5)
-[![version](https://img.shields.io/badge/version-v2-orange.svg)](dist/gkd.version.json5)
+[![version](https://img.shields.io/badge/version-v6-orange.svg)](dist/gkd.version.json5)
 [![license](https://img.shields.io/badge/license-CC%20BY--NC--SA%204.0-lightgrey.svg)](LICENSE)
+
+**唯一发布源**：[`dist/gkd.json5`](dist/gkd.json5)（勿把 `GkAndroidLab/configs/gkd` 当作本订阅权威）。  
+代理约定见 [`AGENTS.md`](AGENTS.md)。审核方案：[`docs/2026-09-13-pdd-automation-review-plan.md`](docs/2026-09-13-pdd-automation-review-plan.md)。
 
 ---
 
-## 一键导入 GKD 订阅
+## 一键导入
 
-GKD App → 订阅 → 右上角「+」→ 粘贴下面任一 URL。
-
-**GitHub Raw**
+GKD App → 订阅 →「+」→ 粘贴：
 
 ```text
 https://raw.githubusercontent.com/MarsGao/GkAndroidLabGKDCoupon/main/dist/gkd.json5
 ```
 
-**jsDelivr（国内常可用）**
+jsDelivr：
 
 ```text
 https://cdn.jsdelivr.net/gh/MarsGao/GkAndroidLabGKDCoupon@main/dist/gkd.json5
 ```
 
-**加速镜像**
-
-```text
-https://ghfast.top/https://raw.githubusercontent.com/MarsGao/GkAndroidLabGKDCoupon/main/dist/gkd.json5
-```
-
-订阅显示名：**MarsGao薅羊毛领券** · 作者：**MarsGao** · 订阅标识：`82640113`  
-规则文件：[`dist/gkd.json5`](dist/gkd.json5)
+显示名：**MarsGao薅羊毛领券** · id：`82640113` · **version 6**
 
 ---
 
-## 这是什么 / 不是什么
+## 两种运行模式（勿中途自动切换）
 
-| 是 | 不是 |
-|---|---|
-| GKD 远程订阅、GKD 规则、第三方订阅 | GKD 官方规则、应用商店里的「精选」 |
-| 拼多多领券、签到、打卡、关诱导弹窗 | 全网 App 广告拦截大全 |
-| 个人维护（MarsGao） | 企业订阅、高昌机电官方规则 |
+| 模式 | 谁点击 | 说明 |
+|---|---|---|
+| **GKD 辅助** | 仅已启用且验证过的规则 | 用户先进页；AI/ADB 只观察，不宣称整条任务完成 |
+| **脚本任务**（短期主基线） | 本仓 `scripts/` | 先停用重叠的拼多多自动点击规则，再跑状态机 |
 
-同类广告拦截订阅可看 [GKD_THS_List](https://github.com/Adpro-Team/GKD_THS_List)（社区目录，非 gkd-kit 官方）。本仓专注「薅羊毛领券」。
+结果枚举：`verified` / `already_claimed` / `unavailable` / `failed` / `needs_review`  
+无正向 UI 证据不得记成功；不承诺「必然领全」。
 
 ---
 
-## 当前规则（拼多多 `com.xunmeng.pinduoduo`）
+## 规则矩阵（拼多多 · v6）
 
-| # | GKD 规则 | 说明 | 状态 |
+| key | 名称 | 默认 | 状态 |
 |---|---|---|---|
-| 1 | 百亿补贴会员每日打卡 | 精确点「打卡」，避开「打卡送积分 / 待打卡」标题 | 已验证 |
-| 2 | 等级礼包无门槛券 | 点「领取」；已领后变「去使用」，规则失效，不进商品页 | 已验证 |
-| 3 | 关闭诱导弹窗 | 残忍拒绝 / 以后再说 / 我知道了 / 开心收下 / 关闭 | 已验证 |
-| 4 | 进入百亿消费券会场 | 主会场点「百亿消费券 …待领」入口卡 | 待页内验证 |
-| 5 | 消费券会场立即领取 | 会场内点立即领取/一键全领（需消费券特征同屏） | 待真机验证 |
+| 1 | 会员每日打卡（精确「打卡」） | 开 | 历史已验证；`resetMatch: app`≠自然日限额 |
+| 2 | 等级礼包无门槛券（同卡关系） | 开 | 已收窄；待快照回归 |
+| 3 | 已知诱导弹窗（不含开心收下/去使用） | 开 | 已收窄 |
+| 4 | 进入百亿消费券会场 | **关** | 主会场常空树；用脚本进场 |
+| 5 | 会场「立即领取」（消费券/双重补贴/地区专享锚点） | 开 | 已去掉「共/元券」模糊；**脚本模式请先关掉** |
+| 6 | 立即点亮 | **关** | 浏览计时由脚本负责 |
+| 7 | 切换地区专享 | **关** | 由脚本切 Tab 并核验 |
 
 ---
 
-## 在 GitHub 上怎么搜到本仓库
+## 脚本入口
 
-GitHub 搜索框可复制：
+需本机 ADB、设备 `device` 状态；通用 helper 在 [GkAndroidLab](https://github.com/MarsGao/GkAndroidLab) `scripts/ecommerce/adb_ui_helper.py`。
 
-```text
-GKD订阅
-GKD规则
-GKD 第三方订阅
-GKD 领券
-GKD 拼多多
-GKD 百亿补贴
-MarsGao薅羊毛领券
-repo:MarsGao/GkAndroidLabGKDCoupon
-topic:gkd-subscription
+```powershell
+cd C:\GkDesktop\GitProjects\GkAndroidLabGKDCoupon
+uv sync --extra dev
+$env:ANDROID_SERIAL = "3B159H003D600000"
+
+# 只观察
+uv run python scripts/run_pdd_coupon_task.py --observe
+uv run python scripts/claim_region_exclusive.py --observe
+
+# 脚本任务（请先停用重叠 GKD 规则）
+uv run python scripts/run_pdd_coupon_task.py --from-stage region
+uv run python scripts/enter_coupon_venue.py
+uv run python scripts/claim_region_exclusive.py
+
+# 页面探查（默认不点领取；不等于 GKD 引擎验收）
+uv run python scripts/verify_pdd_coupon_venue.py
 ```
 
-Topics：`gkd` `gkd-subscription` `gkd-kit` `gkd-rules` `pinduoduo` `pdd` `coupon` `android` `accessibility` `json5` `android-automation` `auto-click`
+进场图像定位需要 Pillow/NumPy；缺失时**明确失败**，不会静默改用固定坐标。仅当传入 `--allow-fallback-xy` 才允许历史坐标。
 
 ---
 
-## GKD 官方与社区目录（避免找错地方）
+## 离线测试
 
-- **官方** [gkd-kit](https://github.com/gkd-kit) / [gkd.li](https://gkd.li)：只有 App 和[订阅格式](https://gkd.li/guide/subscription)。[协议](https://gkd.li/guide/terms)写明默认不含规则。
-- **社区名单** [Adpro-Team/GKD_THS_List](https://github.com/Adpro-Team/GKD_THS_List)：Adpro-Team / Adpro 整理的第三方订阅收录表，不是官方商店。本仓 ID `82640113` 与该表已有 ID 不冲突；规则稳定后再申请收录。
-
----
-
-## 验证与红线
-
-规则 1–3 已在 OnePlus 13 上做过闭环。规则 4 等手机连接后再用 [`scripts/verify_pdd_coupon_venue.py`](scripts/verify_pdd_coupon_venue.py) 验证（入口必须点「百亿消费券」）。
-
-不做：点「去使用」、裂变分享、砍一刀、下单支付；不存账号 / Cookie / 私信。
+```powershell
+uv run pytest -q
+```
 
 ---
 
@@ -102,15 +95,16 @@ Topics：`gkd` `gkd-subscription` `gkd-kit` `gkd-rules` `pinduoduo` `pdd` `coupo
 
 | 版本 | 日期 | 说明 |
 |---|---|---|
-| v2 | 2026-09-03 | 消费券会场「立即点亮」；检索说明 |
-| v1 | 2026-09-03 | 打卡、等级礼包、弹窗、主会场领取 |
+| v6 | 2026-09-13 | 收窄规则；关 4/6/7；脚本状态机与结果枚举；文档对齐 |
+| v5 | 2026-09 | 七组规则（含点亮/地区 Tab） |
+| v2 | 2026-09-03 | 消费券会场相关 |
+| v1 | 2026-09-03 | 打卡、等级礼包、弹窗 |
 
 ---
 
-## 相关链接
+## 红线
 
-- [GkAndroidLab](https://github.com/MarsGao/GkAndroidLab) — ADB 真机脚本
-- [gkd-kit/subscription-template](https://github.com/gkd-kit/subscription-template) — 官方订阅模板
-- [Adpro-Team/GKD_THS_List](https://github.com/Adpro-Team/GKD_THS_List) — 第三方订阅名单
+不做：点「去使用」、裂变分享、下单支付；不存账号/Cookie/私信。  
+不 fork 大型广告订阅。不把 Lab 旧 v1 配置回灌为发布源。
 
 许可：[CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)

@@ -1,11 +1,11 @@
-// GKD订阅 / GKD规则 / GKD第三方订阅 / MarsGao薅羊毛领券
-// 拼多多领券、百亿补贴打卡、无门槛券、自动签到（非广告拦截大全）
-// 格式：https://gkd.li/guide/subscription
+// GKD订阅 / MarsGao薅羊毛领券
+// 唯一发布源：本文件 + gkd.version.json5（勿回灌 Lab configs/gkd）
 // 导入：https://raw.githubusercontent.com/MarsGao/GkAndroidLabGKDCoupon/main/dist/gkd.json5
+// v6：收窄卡片关系；未经验证的入口/点亮/切 Tab 默认关闭（脚本任务模式主基线）
 {
   id: 82640113,
   name: 'MarsGao薅羊毛领券',
-  version: 5,
+  version: 6,
   author: 'MarsGao',
   updateUrl: 'https://raw.githubusercontent.com/MarsGao/GkAndroidLabGKDCoupon/main/dist/gkd.json5',
   checkUpdateUrl: 'https://raw.githubusercontent.com/MarsGao/GkAndroidLabGKDCoupon/main/dist/gkd.version.json5',
@@ -23,7 +23,7 @@
         {
           key: 1,
           name: '领券签到-百亿补贴会员每日打卡',
-          desc: '在「百亿补贴会员」页精确点击文案「打卡」。每天最多点 1 次，不含「打卡送积分」「待打卡」等标题文案。',
+          desc: '精确点击 text=「打卡」。不含「打卡送积分」「待打卡」。resetMatch=app 表示重进 App 重置次数，不是自然日限额。',
           enable: true,
           fastQuery: true,
           actionMaximum: 1,
@@ -37,7 +37,6 @@
             {
               key: 0,
               matches: '[text="打卡"][visibleToUser=true]',
-              exampleUrls: [],
               snapshotUrls: [],
             },
           ],
@@ -45,7 +44,7 @@
         {
           key: 2,
           name: '领券签到-会员等级礼包无门槛券领取',
-          desc: '在「百亿补贴会员等级」页，领取等级礼包中的无门槛券。不点「去使用/已使用」，不点「少拉1人」裂变卡，不进商品页。',
+          desc: '同一卡片祖先内：无门槛券 + 领取。不点去使用/已使用/少拉1人。',
           enable: true,
           fastQuery: true,
           actionMaximum: 2,
@@ -58,36 +57,26 @@
           rules: [
             {
               key: 0,
-              name: '无门槛券旁领取',
-              // 同屏出现「无门槛券」文案后，点「领取」；已领时文案变「去使用」，规则自然失效
-              matches: [
-                '[text*="无门槛券"][visibleToUser=true]',
-                '[text="领取"][visibleToUser=true]',
-              ],
-              snapshotUrls: [],
-            },
-            {
-              key: 1,
-              name: '等级礼包区块内领取（兜底）',
-              matches: [
-                '[text*="等级礼包"][visibleToUser=true]',
-                '[text="领取"][visibleToUser=true]',
-              ],
+              name: '无门槛券同卡领取',
+              // @ 标记点击目标；<(1,6) 上溯共同祖先后再找同卡「无门槛券」
+              matches:
+                '@[text="领取"][visibleToUser=true] <(1,6) [childCount>1] >(1,10) [text*="无门槛券"][visibleToUser=true]',
               snapshotUrls: [],
             },
           ],
         },
         {
           key: 3,
-          name: '弹窗处理-关闭诱导弹窗',
-          desc: '关闭「残忍拒绝/以后再说/我知道了/开心收下」等干扰弹窗；不点分享裂变。',
+          name: '弹窗处理-关闭已知诱导弹窗',
+          desc: '仅关闭已识别文案；不含开心收下/去使用/继续（避免误关业务或误点领取）。',
           enable: true,
           fastQuery: true,
           actionMaximum: 5,
           rules: [
             {
               key: 0,
-              matches: '[text="残忍拒绝" || text="以后再说" || text="我知道了" || text="开心收下"][visibleToUser=true]',
+              matches:
+                '[text="残忍拒绝" || text="以后再说" || text="我知道了" || text="朕知道了"][visibleToUser=true]',
             },
             {
               key: 1,
@@ -98,8 +87,8 @@
         {
           key: 4,
           name: '领券签到-进入百亿消费券会场',
-          desc: '主会场「百亿消费券/…待领」入口。注意：多数机型上该 H5 横滑卡无障碍树为空，GKD 可能点不到；请用 scripts/enter_coupon_venue.py（ADB）进场，进场后由规则5自动领。',
-          enable: true,
+          desc: '主会场入口 H5 常无障碍空树；默认关闭。进场请用 scripts/enter_coupon_venue.py（脚本任务模式）。',
+          enable: false,
           fastQuery: true,
           actionMaximum: 1,
           resetMatch: 'app',
@@ -115,29 +104,15 @@
               name: '同节点含百亿消费券+待领',
               matches: '[text*="百亿消费券"][text*="待领"][visibleToUser=true]',
             },
-            {
-              key: 1,
-              name: '拆分节点：先见百亿消费券，再点待领',
-              // 文案常拆成两个 TextView；数组匹配点最后一个
-              matches: [
-                '[text*="百亿消费券"][visibleToUser=true]',
-                '[text*="待领"][visibleToUser=true]',
-              ],
-            },
-            {
-              key: 2,
-              name: '短文案 / desc 兜底',
-              matches: '[text*="百亿消费券" || desc*="百亿消费券" || text*="100元券待领"][visibleToUser=true]',
-            },
           ],
         },
         {
           key: 5,
           name: '领券签到-消费券会场立即领取',
-          desc: '在消费券会场（双重补贴/地区专享）点「立即领取/一键全领/开心收下」。已领变「去使用」则不再点。不点抽福袋、不去使用。',
+          desc: '会场锚点 + 立即领取；已去掉模糊金额兜底与通用收下类关闭。仍须 GKD 引擎真机验收；脚本模式请先停用本规则。',
           enable: true,
           fastQuery: true,
-          actionMaximum: 30,
+          actionMaximum: 20,
           matchTime: 30000,
           actionDelay: 500,
           activityIds: [
@@ -147,10 +122,10 @@
           rules: [
             {
               key: 0,
-              name: '会场内立即领取',
+              name: '会场锚点下的立即领取',
               matches: [
-                '[text="消费券" || text*="双重补贴" || text*="地区专享" || text*="共" || text*="元券"][visibleToUser=true]',
-                '[text="立即领取" || text="一键全领" || text="开心收下"][visibleToUser=true]',
+                '[text="消费券" || text="双重补贴" || text="地区专享"][visibleToUser=true]',
+                '[text="立即领取"][visibleToUser=true]',
               ],
             },
           ],
@@ -158,8 +133,8 @@
         {
           key: 6,
           name: '领券签到-消费券会场立即点亮',
-          desc: '点「立即点亮」。点后常弹出「浏览商品10秒」引导；浏览滑动由 ADB 脚本处理（GKD 无法计时下滑）。已点亮时文案变「今日已点亮」则不再点。',
-          enable: true,
+          desc: '未经验证默认关闭；点亮+浏览计时由脚本状态机负责。不含无前置条件的「去看看」。',
+          enable: false,
           fastQuery: true,
           actionMaximum: 1,
           resetMatch: 'app',
@@ -174,18 +149,13 @@
               key: 0,
               matches: '[text="立即点亮"][visibleToUser=true]',
             },
-            {
-              key: 1,
-              name: '点亮引导去看看',
-              matches: '[text*="去看看"][visibleToUser=true]',
-            },
           ],
         },
         {
           key: 7,
           name: '领券签到-切换地区专享',
-          desc: '在消费券会场点击「地区专享」Tab，便于规则5领取地区券。每天最多点 2 次。',
-          enable: true,
+          desc: '未经验证默认关闭；切 Tab 由 scripts/claim_region_exclusive.py 负责并核验。',
+          enable: false,
           fastQuery: true,
           actionMaximum: 2,
           resetMatch: 'app',
@@ -198,7 +168,6 @@
           rules: [
             {
               key: 0,
-              // 同屏有消费券标题时再点地区专享，降低误触其它页同名文案
               matches: [
                 '[text="消费券" || text*="百亿消费券"][visibleToUser=true]',
                 '[text="地区专享"][visibleToUser=true]',

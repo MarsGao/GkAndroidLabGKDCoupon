@@ -49,6 +49,13 @@ GKD 显示名：**MarsGao薅羊毛领券** · 订阅 id：`82640113`。
 
 前后证据对不上同一张券 → `needs_review`。UI 领取态 ≠ 服务器最终额度。
 
+## 会场同页先后顺序
+
+- GKD：`order` + `excludeMatches` 可做弱约束（见 key8）；`preKeys` ≠「领完」。
+- 脚本：`run_venue_pipeline.py` / `run_pdd_coupon_task.py`（**region → light**）为权威编排。
+- 详解：`docs/2026-09-14-gkd-ordering.md`。
+- 脚本模式必须关闭 key5/key8（及第三方重叠点击），并传 `--confirm-gkd-off`。
+
 ## 相关仓库
 
 - [GkAndroidLab](https://github.com/MarsGao/GkAndroidLab) — ADB helper、设备适配、电商 Skill

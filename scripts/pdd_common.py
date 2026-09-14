@@ -138,6 +138,6 @@ def assert_script_mode_preflight(ui: AdbUIHelper, confirm_gkd_off: bool = False)
             "无法通过 API 核验 GKD 开关；PC 锁不能证明互斥。"
         )
     print(
-        "[preflight] 已确认 GKD 重叠点击规则停用；请保证手机订阅已到 v6，"
-        "且无障碍正常（首页勿显示「无障碍发生故障」）。"
+        "[preflight] 已确认 GKD 重叠点击规则停用；请保证手机订阅已到 v7，"
+        "脚本模式请关闭 key5/key8（及第三方重叠拼多多点击）；无障碍须正常。"
     )

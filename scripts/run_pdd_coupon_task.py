@@ -4,15 +4,16 @@
 拼多多领券脚本任务模式状态机（短期主基线）。
 
 阶段：preflight → member_checkin → level_gift → enter_venue → dual_claim
-      → light_browse → region_exclusive → summary
+      → region_exclusive → light_browse → summary
 
+硬顺序：地区/会场「立即领取」必须先于「立即点亮」。
 不自动中途切换到 GKD；不宣称必然领全。
-已完成步骤可按页面状态跳过。
+会场单页有序闭环也可直接：scripts/run_venue_pipeline.py
 
 用法：
   python scripts/run_pdd_coupon_task.py --observe
-  python scripts/run_pdd_coupon_task.py --from-stage region
-  python scripts/run_pdd_coupon_task.py --stages member,venue,region
+  python scripts/run_pdd_coupon_task.py --from-stage region --confirm-gkd-off
+  python scripts/run_pdd_coupon_task.py --stages member,venue,region,light
 """
 
 from __future__ import annotations
@@ -44,8 +45,8 @@ ALL_STAGES = (
     "level",
     "venue",
     "dual",
+    "region",  # 必须先于 light
     "light",
-    "region",
 )
 
 
@@ -174,18 +175,34 @@ def step_dual_claim(ui: AdbUIHelper, report: TaskReport, observe: bool, max_n: i
     return StepResult.UNAVAILABLE
 
 
+def _scroll_venue_top(ui: AdbUIHelper, rounds: int = 3) -> None:
+    w, h = ui.screen_width, ui.screen_height
+    for _ in range(rounds):
+        ui.swipe(w // 2, int(h * 0.28), w // 2, int(h * 0.78), 420)
+        time.sleep(0.35)
+
+
 def step_light_browse(ui: AdbUIHelper, report: TaskReport, observe: bool, browse_sec: float) -> StepResult:
+    _scroll_venue_top(ui)
     root = ui.dump_ui(require_nodes=True)
     sig = page_signals(ui, root)
     if sig["light_done"]:
         report.add("light_browse", StepResult.ALREADY_CLAIMED, "今日已点亮")
         return StepResult.ALREADY_CLAIMED
-    lights = ui.find_nodes(root, text_regex=r"^立即点亮$")
+    # 顺序闸：仍有可领券时禁止点亮
+    if region_mod._claim_candidates(ui, root):
+        report.add("light_browse", StepResult.NEEDS_REVIEW, "仍有立即领取，拒绝点亮（顺序闸）")
+        return StepResult.NEEDS_REVIEW
+    lights = ui.find_nodes(root, text_regex=r"^(立即点亮|解锁点亮)$")
     if not lights:
-        report.add("light_browse", StepResult.UNAVAILABLE, "无立即点亮")
+        _scroll_venue_top(ui, rounds=2)
+        root = ui.dump_ui(require_nodes=True)
+        lights = ui.find_nodes(root, text_regex=r"^(立即点亮|解锁点亮)$")
+    if not lights:
+        report.add("light_browse", StepResult.UNAVAILABLE, "无立即点亮/解锁点亮")
         return StepResult.UNAVAILABLE
     if observe:
-        report.add("light_browse", StepResult.VERIFIED, "observe 可见立即点亮")
+        report.add("light_browse", StepResult.VERIFIED, "observe 可见点亮按钮")
         return StepResult.VERIFIED
     if len(lights) > 1:
         report.add("light_browse", StepResult.NEEDS_REVIEW, "点亮按钮歧义")
@@ -274,12 +291,6 @@ def run_stages(
         if "dual" in stages:
             step_dual_claim(ui, report, observe, max_n=5)
 
-        if "light" in stages:
-            r = step_light_browse(ui, report, observe, browse_sec)
-            if r == StepResult.FAILED and not observe:
-                print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
-                return 1
-
         if "region" in stages:
             code = region_mod.run(
                 serial,
@@ -287,12 +298,23 @@ def run_stages(
                 skip_tab=False,
                 max_claims=8,
                 max_rounds=8,
+                confirm_gkd_off=confirm_gkd_off if not observe else False,
             )
             report.add(
                 "region_exclusive",
                 StepResult.VERIFIED if code == 0 else StepResult.FAILED if code in (1, 3) else StepResult.NEEDS_REVIEW,
                 f"region_exit_code={code}",
             )
+            if code not in (0,) and not observe:
+                print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
+                return code
+
+        if "light" in stages:
+            r = step_light_browse(ui, report, observe, browse_sec)
+            if r in (StepResult.FAILED, StepResult.NEEDS_REVIEW) and not observe:
+                # 顺序闸 needs_review 也停，避免未领完却继续
+                print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
+                return 1 if r == StepResult.FAILED else 2
 
         print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
         if any(r.result == StepResult.FAILED for r in report.records):

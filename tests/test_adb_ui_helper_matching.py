@@ -75,13 +75,13 @@ def test_gkd_version_aligned():
     m2 = re.search(r"version:\s*(\d+)", ver_file)
     assert m and m2
     assert m.group(1) == m2.group(1)
-    assert int(m.group(1)) >= 6
+    assert int(m.group(1)) >= 7
 
 
 def test_gkd_unverified_keys_disabled():
     raw = (ROOT / "dist" / "gkd.json5").read_text(encoding="utf-8")
-    # key 4/6/7 块内应有 enable: false（粗检）
-    for key in (4, 6, 7):
+    # key 4/5/6/7 遗留或未经验证入口默认关；key8 为有序流水线默认开
+    for key in (4, 5, 6, 7):
         block = re.search(
             rf"key:\s*{key},.*?enable:\s*(true|false)",
             raw,
@@ -89,6 +89,10 @@ def test_gkd_unverified_keys_disabled():
         )
         assert block, f"missing key {key}"
         assert block.group(1) == "false", f"key {key} should be disabled by default"
+    key8 = re.search(r"key:\s*8,.*?enable:\s*(true|false)", raw, re.S)
+    assert key8 and key8.group(1) == "true"
+    assert "excludeMatches" in raw
+    assert 'text="立即领取"' in raw
 
 
 def test_gkd_no_fuzzy_yuan_quan_in_key5():
@@ -103,3 +107,28 @@ def test_gkd_no_fuzzy_yuan_quan_in_key5():
     assert rules
     assert "开心收下" not in rules.group(1)
     assert "一键全领" not in rules.group(1)
+
+
+def test_claim_candidates_skip_zero_bounds():
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import claim_region_exclusive as region  # noqa: WPS433
+
+    h = object.__new__(AdbUIHelper)
+    h.screen_width = 1440
+    h.screen_height = 3168
+    root = ET.Element("hierarchy")
+    for bounds in ("[0,0][0,0]", "[73,1376][437,1478]", "[1421,1376][1440,1478]"):
+        ET.SubElement(
+            root,
+            "node",
+            {
+                "text": "立即领取",
+                "content-desc": "",
+                "resource-id": "",
+                "bounds": bounds,
+                "clickable": "true",
+            },
+        )
+    cands = region._claim_candidates(h, root)
+    assert len(cands) == 1
+    assert cands[0]["bounds"] == (73, 1376, 437, 1478)

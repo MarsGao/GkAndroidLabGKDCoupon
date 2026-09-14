@@ -40,9 +40,15 @@ def _claim_candidates(ui: AdbUIHelper, root) -> list[dict]:
         cx, cy = n["center"]
         x1, y1, x2, y2 = n["bounds"]
         w, h = x2 - x1, y2 - y1
+        # WebView 常残留 [0,0][0,0] / 零宽节点，不可点
+        if w < 48 or h < 24 or x2 <= x1 or y2 <= y1:
+            continue
         if cy < 350 or cy > ui.screen_height * 0.92:
             continue
         if w > 520 or h > 220:
+            continue
+        # 横向裁切过半视为滑出可视区
+        if x1 >= ui.screen_width - 24 or x2 <= 24:
             continue
         out.append(n)
     out.sort(key=lambda z: (z["center"][1], z["center"][0]))
@@ -66,6 +72,10 @@ def ensure_region_tab(ui: AdbUIHelper, report: TaskReport, skip: bool) -> StepRe
 
     tabs = ui.find_nodes(root, text_regex=r"^地区专享$")
     if not tabs:
+        # 文案特征在但节点瞬时缺失：已在会场则放行，避免卡死点亮阶段
+        if sig.get("region_tab") or sig.get("venue"):
+            report.add("region_tab", StepResult.VERIFIED, "无独立 Tab 节点，按会场特征放行")
+            return StepResult.VERIFIED
         report.add("region_tab", StepResult.UNAVAILABLE, "无「地区专享」节点")
         return StepResult.UNAVAILABLE
 
@@ -119,6 +129,11 @@ def claim_one(ui: AdbUIHelper, report: TaskReport, idx: int) -> StepResult:
     before_go = len(ui.find_nodes(root, text_regex=r"^去使用$"))
 
     ui.tap_node(target, delay=1.4)
+    # 仅关明确「开心收下」类文案；勿点匿名右上角 X（会场页易误关整页）
+    root_mid = ui.dump_ui(require_nodes=True)
+    accept = ui.find_nodes(root_mid, text_regex=r"^(开心收下|我知道了|知道了)$")
+    if accept:
+        ui.tap_node(accept[0], delay=1.0)
     root_after = ui.dump_ui(require_nodes=True)
     sig_after = page_signals(ui, root_after)
 

@@ -1,11 +1,12 @@
 // GKD订阅 / MarsGao薅羊毛领券
 // 唯一发布源：本文件 + gkd.version.json5（勿回灌 Lab configs/gkd）
 // 导入：https://raw.githubusercontent.com/MarsGao/GkAndroidLabGKDCoupon/main/dist/gkd.json5
-// v6：收窄卡片关系；未经验证的入口/点亮/切 Tab 默认关闭（脚本任务模式主基线）
+// v7：key8 会场有序流水线（order + excludeMatches）；key5 默认关避免与 key8 抢点
+// 说明：GKD 可弱约束同页先后，不能可靠完成「领完→点亮→浏览计时→核验」；完整闭环用 scripts/run_venue_pipeline.py
 {
   id: 82640113,
   name: 'MarsGao薅羊毛领券',
-  version: 6,
+  version: 7,
   author: 'MarsGao',
   updateUrl: 'https://raw.githubusercontent.com/MarsGao/GkAndroidLabGKDCoupon/main/dist/gkd.json5',
   checkUpdateUrl: 'https://raw.githubusercontent.com/MarsGao/GkAndroidLabGKDCoupon/main/dist/gkd.version.json5',
@@ -58,7 +59,6 @@
             {
               key: 0,
               name: '无门槛券同卡领取',
-              // @ 标记点击目标；<(1,6) 上溯共同祖先后再找同卡「无门槛券」
               matches:
                 '@[text="领取"][visibleToUser=true] <(1,6) [childCount>1] >(1,10) [text*="无门槛券"][visibleToUser=true]',
               snapshotUrls: [],
@@ -108,9 +108,9 @@
         },
         {
           key: 5,
-          name: '领券签到-消费券会场立即领取',
-          desc: '会场锚点 + 立即领取；已去掉模糊金额兜底与通用收下类关闭。仍须 GKD 引擎真机验收；脚本模式请先停用本规则。',
-          enable: true,
+          name: '领券签到-消费券会场立即领取（单规则·遗留）',
+          desc: 'v7 起默认关闭；请用 key8 有序流水线。脚本模式务必关闭 key5/key8。',
+          enable: false,
           fastQuery: true,
           actionMaximum: 20,
           matchTime: 30000,
@@ -132,8 +132,8 @@
         },
         {
           key: 6,
-          name: '领券签到-消费券会场立即点亮',
-          desc: '未经验证默认关闭；点亮+浏览计时由脚本状态机负责。不含无前置条件的「去看看」。',
+          name: '领券签到-消费券会场立即点亮（单规则·遗留）',
+          desc: '默认关闭；无 excludeMatches 时会与领取抢点。请用 key8 或脚本。',
           enable: false,
           fastQuery: true,
           actionMaximum: 1,
@@ -147,14 +147,14 @@
           rules: [
             {
               key: 0,
-              matches: '[text="立即点亮"][visibleToUser=true]',
+              matches: '[text="立即点亮" || text="解锁点亮"][visibleToUser=true]',
             },
           ],
         },
         {
           key: 7,
-          name: '领券签到-切换地区专享',
-          desc: '未经验证默认关闭；切 Tab 由 scripts/claim_region_exclusive.py 负责并核验。',
+          name: '领券签到-切换地区专享（单规则·遗留）',
+          desc: '默认关闭；切 Tab 已并入 key8，脚本模式仍以 claim_region_exclusive 核验为准。',
           enable: false,
           fastQuery: true,
           actionMaximum: 2,
@@ -172,6 +172,52 @@
                 '[text="消费券" || text*="百亿消费券"][visibleToUser=true]',
                 '[text="地区专享"][visibleToUser=true]',
               ],
+            },
+          ],
+        },
+        {
+          key: 8,
+          name: '领券签到-会场有序流水线（先领后点亮）',
+          desc: '同组内 order 越小越优先匹配。点亮规则用 excludeMatches 挡住仍存在的「立即领取」。preKeys 只表示「刚执行过某规则」，不能表达「领完」。不含 10s 浏览核验——完整闭环用 scripts/run_venue_pipeline.py。脚本任务模式请关闭本组。',
+          enable: true,
+          fastQuery: true,
+          matchTime: 45000,
+          actionDelay: 450,
+          activityIds: [
+            'com.xunmeng.pinduoduo.activity.NewPageActivity',
+            'com.xunmeng.pinduoduo.activity.NewPageMaskActivity',
+          ],
+          rules: [
+            {
+              key: 0,
+              name: '切换地区专享',
+              order: 10,
+              actionMaximum: 2,
+              resetMatch: 'app',
+              matches: [
+                '[text="消费券" || text*="百亿消费券" || text="双重补贴"][visibleToUser=true]',
+                '[text="地区专享"][visibleToUser=true]',
+              ],
+            },
+            {
+              key: 1,
+              name: '地区/会场立即领取',
+              order: 20,
+              actionMaximum: 20,
+              matches: [
+                '[text="消费券" || text="双重补贴" || text="地区专享"][visibleToUser=true]',
+                '[text="立即领取"][visibleToUser=true]',
+              ],
+            },
+            {
+              key: 2,
+              name: '点亮（屏幕无立即领取时）',
+              order: 30,
+              actionMaximum: 1,
+              resetMatch: 'app',
+              // 同屏仍有可领券时禁止点亮 —— 这是 GKD 能做的「先后」约束上限
+              excludeMatches: ['[text="立即领取"][visibleToUser=true]'],
+              matches: '[text="立即点亮" || text="解锁点亮"][visibleToUser=true]',
             },
           ],
         },

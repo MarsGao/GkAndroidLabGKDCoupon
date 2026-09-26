@@ -29,6 +29,8 @@ from pdd_common import (  # noqa: E402
     assert_script_mode_preflight,
     make_helper,
     page_signals,
+    runtime_preflight,
+    script_runtime_blockers,
 )
 from adb_ui_helper import AdbError, AdbUIHelper  # noqa: E402
 
@@ -113,10 +115,11 @@ def claim_one(ui: AdbUIHelper, report: TaskReport, idx: int) -> StepResult:
 
     candidates = _claim_candidates(ui, root)
     if not candidates:
-        if sig["go_use"] and not sig["claimable"]:
-            report.add(f"claim[{idx}]", StepResult.ALREADY_CLAIMED, "可见去使用、无立即领取")
-            return StepResult.ALREADY_CLAIMED
-        report.add(f"claim[{idx}]", StepResult.UNAVAILABLE, "本屏无立即领取")
+        report.add(
+            f"claim[{idx}]",
+            StepResult.UNAVAILABLE,
+            "本观察范围无立即领取；不能据此断言全部已领",
+        )
         return StepResult.UNAVAILABLE
 
     if len(candidates) > 1:
@@ -155,31 +158,26 @@ def claim_one(ui: AdbUIHelper, report: TaskReport, idx: int) -> StepResult:
     after_nodes = _claim_candidates(ui, root_after)
     after_go = len(ui.find_nodes(root_after, text_regex=r"^去使用$"))
     still_same = any(_fingerprint(n) == fp for n in after_nodes)
+    same_slot_received = any(
+        n["bounds"] == target["bounds"]
+        for n in ui.find_nodes(root_after, text_regex=r"^(去使用|已领取|已使用)$")
+    )
 
-    if after_go > before_go and not still_same:
-        report.add(
-            f"claim[{idx}]",
-            StepResult.VERIFIED,
-            f"去使用 {before_go}->{after_go}；立即领取 {before_count}->{len(after_nodes)}",
-            before=fp,
-            after=f"go_use={after_go}",
-        )
-        return StepResult.VERIFIED
-
-    if not still_same and len(after_nodes) < before_count:
-        report.add(
-            f"claim[{idx}]",
-            StepResult.VERIFIED,
-            f"目标位消失；立即领取 {before_count}->{len(after_nodes)}",
-            before=fp,
-        )
-        return StepResult.VERIFIED
-
-    if still_same and after_go == before_go:
+    if same_slot_received and not still_same:
         report.add(
             f"claim[{idx}]",
             StepResult.NEEDS_REVIEW,
-            "点击后目标仍在且去使用未增",
+            "同坐标出现已领状态，但无障碍树未提供可证明同卡片的父容器；拒绝记 verified",
+            before=fp,
+            after=f"status_at={target['bounds']}",
+        )
+        return StepResult.NEEDS_REVIEW
+
+    if still_same:
+        report.add(
+            f"claim[{idx}]",
+            StepResult.NEEDS_REVIEW,
+            f"点击后同一目标仍可领取；去使用计数 {before_go}->{after_go}",
             before=fp,
         )
         return StepResult.NEEDS_REVIEW
@@ -187,7 +185,7 @@ def claim_one(ui: AdbUIHelper, report: TaskReport, idx: int) -> StepResult:
     report.add(
         f"claim[{idx}]",
         StepResult.NEEDS_REVIEW,
-        "状态变化无法对应同一券",
+        "领取目标消失或页面发生变化，但缺少同券身份及正向领取状态",
         before=fp,
     )
     return StepResult.NEEDS_REVIEW
@@ -210,30 +208,40 @@ def run(
     max_claims: int,
     max_rounds: int,
     confirm_gkd_off: bool = False,
+    task_report: TaskReport | None = None,
 ) -> int:
-    report = TaskReport(mode="observe" if observe else "script", serial=serial)
+    report = task_report or TaskReport(mode="observe" if observe else "script", serial=serial or "auto")
     try:
         ui = make_helper(serial)
-        if not observe:
-            assert_script_mode_preflight(ui, confirm_gkd_off=confirm_gkd_off)
-            ui.dismiss_popups(max_attempts=2)
-
-        tab_res = ensure_region_tab(ui, report, skip=skip_tab)
-        if tab_res in (StepResult.FAILED, StepResult.NEEDS_REVIEW) and not skip_tab:
-            print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
-            return 2
-
+        report.serial = ui.serial
         if observe:
+            # Observation is intentionally read-only: no popup dismissal, tab change or scrolling.
             root = ui.dump_ui(require_nodes=True)
             sig = page_signals(ui, root)
             cands = _claim_candidates(ui, root)
             report.add(
                 "observe",
-                StepResult.VERIFIED if sig["region_tab"] else StepResult.NEEDS_REVIEW,
-                detail=f"claimable={len(cands)} go_use={sig['go_use']} venue={sig['venue']}",
+                StepResult.VERIFIED if sig["venue"] or sig["region_tab"] else StepResult.NEEDS_REVIEW,
+                f"claimable={len(cands)} go_use={sig['go_use']} venue={sig['venue']}",
             )
             print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
-            return 0
+            return report.exit_code()
+
+        assert_script_mode_preflight(ui, confirm_gkd_off=confirm_gkd_off)
+        live = runtime_preflight(ui)
+        report.add("device_preflight", StepResult.VERIFIED, json.dumps(live, ensure_ascii=False))
+        blockers = script_runtime_blockers(live)
+        if blockers:
+            report.records[-1].result = StepResult.FAILED
+            report.records[-1].detail = "; ".join(blockers)
+            print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
+            return report.exit_code()
+        ui.dismiss_popups(max_attempts=2)
+
+        tab_res = ensure_region_tab(ui, report, skip=skip_tab)
+        if tab_res in (StepResult.FAILED, StepResult.NEEDS_REVIEW) and not skip_tab:
+            print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
+            return 2
 
         verified = 0
         empty_streak = 0
@@ -260,6 +268,8 @@ def run(
                     continue
                 if res2 == StepResult.FAILED:
                     break
+                if res2 == StepResult.NEEDS_REVIEW:
+                    break
                 scroll_coupon_area(ui, horizontal=False)
                 time.sleep(0.7)
                 empty_streak += 1
@@ -275,12 +285,11 @@ def run(
                 break
 
         print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
-        failed = any(r.result == StepResult.FAILED for r in report.records)
-        return 1 if failed else 0
+        return report.exit_code()
     except AdbError as e:
         report.add("adb", StepResult.FAILED, str(e))
         print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
-        return 3
+        return report.exit_code()
 
 
 def main() -> int:

@@ -3,9 +3,9 @@
 """
 进入拼多多「百亿消费券」会场。
 
-主会场 H5 常无障碍空树，优先截图识别红标题条；
-失败默认停机（needs_review），不自动盲点固定坐标。
-缺 Pillow/NumPy 时明确失败，不改写为危险兜底。
+主会场 H5 常无障碍空树；默认仅点击唯一可访问的语义入口。
+旧红条颜色与固定坐标仅留显式兼容探查，不用于默认自动进场。
+无法确认入口时返回 needs_review，不以截图颜色当成业务身份。
 
 用法：
   python scripts/enter_coupon_venue.py --observe
@@ -19,7 +19,6 @@ import argparse
 import json
 import os
 import sys
-import time
 from collections import Counter
 from pathlib import Path
 
@@ -31,6 +30,9 @@ from pdd_common import (  # noqa: E402
     TaskReport,
     make_helper,
     page_signals,
+    assert_script_mode_preflight,
+    runtime_preflight,
+    script_runtime_blockers,
 )
 from adb_ui_helper import AdbError  # noqa: E402
 
@@ -76,27 +78,58 @@ def venue_ok(ui) -> tuple[bool, str]:
     return False, "no_venue_features"
 
 
-def run(serial: str, observe: bool, open_subsidy: bool, allow_fallback: str | None) -> int:
-    report = TaskReport(mode="observe" if observe else "script", serial=serial)
+def run(
+    serial: str,
+    observe: bool,
+    open_subsidy: bool,
+    allow_fallback: str | None,
+    confirm_gkd_off: bool = False,
+) -> int:
+    report = TaskReport(mode="observe" if observe else "script", serial=serial or "auto")
     try:
         ui = make_helper(serial)
-        if open_subsidy:
-            # 稳定路径：百亿补贴搜索深链 → 点消费券卡标题区（抽福袋上方）
-            # brand_rebate / 裸 coupons.html 不稳定（失败页或「我的优惠券」）
-            ui.run_shell(
-                "am start -a android.intent.action.VIEW -d "
-                "'pinduoduo://com.xunmeng.pinduoduo/search_result.html?search_key=%E7%99%BE%E4%BA%BF%E8%A1%A5%E8%B4%B4'"
+        report.serial = ui.serial
+        if observe and open_subsidy:
+            report.add(
+                "enter",
+                StepResult.NEEDS_REVIEW,
+                "observe 模式不执行打开补贴页或点击入口；请先手动进入目标页面",
             )
-            time.sleep(4.5)
-            # 右卡「百亿消费券」标题区（抽福袋按钮约 y=1065，点其上方）
-            ui.tap(1000, 980, delay=3.5)
-            ok, why = venue_ok(ui)
-            if ok:
-                report.add("enter", StepResult.VERIFIED, f"bybt_search+card_tap proof={why}")
+            print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
+            return report.exit_code()
+        if observe:
+            root = ui.dump_ui(require_nodes=False)
+            sig = page_signals(ui, root)
+            if sig["venue"]:
+                report.add("venue_probe", StepResult.VERIFIED, "已处于消费券会场")
+            else:
+                entries = ui.find_nodes(root, text_regex=r"百亿消费券")
+                result = StepResult.VERIFIED if len(entries) == 1 else StepResult.NEEDS_REVIEW
+                report.add(
+                    "entry_probe",
+                    result,
+                    f"可访问树中入口候选={len(entries)}；不截图、不触屏操作",
+                )
+            print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
+            return report.exit_code()
+        if not observe:
+            assert_script_mode_preflight(ui, confirm_gkd_off=confirm_gkd_off)
+            live = runtime_preflight(ui)
+            report.add("device_preflight", StepResult.VERIFIED, json.dumps(live, ensure_ascii=False))
+            blockers = script_runtime_blockers(live)
+            if blockers:
+                report.records[-1].result = StepResult.FAILED
+                report.records[-1].detail = "; ".join(blockers)
                 print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
-                return 0
-            report.add("enter", StepResult.NEEDS_REVIEW, "搜索进百亿补贴后点消费券卡未进会场")
-            # fall through to a11y/image attempts below
+                return report.exit_code()
+        if open_subsidy:
+            report.add(
+                "enter",
+                StepResult.NEEDS_REVIEW,
+                "--open-subsidy 的旧搜索深链和固定坐标未通过 mi14Pro 验证；请先人工进入百亿补贴频道",
+            )
+            print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
+            return report.exit_code()
 
         # 优先无障碍：若已有「百亿消费券」文本节点则点它
         root = ui.dump_ui()
@@ -117,6 +150,16 @@ def run(serial: str, observe: bool, open_subsidy: bool, allow_fallback: str | No
             method = "a11y_text"
 
         if xy is None:
+            # H5 的红色条带并不等于「百亿消费券」语义；旧 OnePlus 13 的
+            # 绝对 y 范围不能作为 mi14Pro 自动点击依据。
+            if not allow_fallback:
+                report.add(
+                    "enter",
+                    StepResult.NEEDS_REVIEW,
+                    "无可访问的唯一入口节点；动态 H5 需要新鲜截图 OCR 与会场回查，未执行颜色/固定坐标猜测",
+                )
+                print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
+                return report.exit_code()
             local = os.path.abspath(
                 os.path.join(os.path.dirname(__file__), "..", "data", "pdd_enter_probe.png")
             )
@@ -149,11 +192,6 @@ def run(serial: str, observe: bool, open_subsidy: bool, allow_fallback: str | No
                 print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
                 return 2
 
-        if observe:
-            report.add("enter", StepResult.VERIFIED, f"observe_only method={method} xy={xy}")
-            print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
-            return 0
-
         # 不点「空白区」——可能点到别的入口
         ui.tap(xy[0], xy[1], delay=3.0)
         ok, why = venue_ok(ui)
@@ -172,7 +210,7 @@ def run(serial: str, observe: bool, open_subsidy: bool, allow_fallback: str | No
     except AdbError as e:
         report.add("adb", StepResult.FAILED, str(e))
         print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
-        return 3
+        return report.exit_code()
 
 
 def main() -> int:
@@ -180,6 +218,7 @@ def main() -> int:
     ap.add_argument("--serial", default=SERIAL_DEFAULT)
     ap.add_argument("--observe", action="store_true")
     ap.add_argument("--open-subsidy", action="store_true")
+    ap.add_argument("--confirm-gkd-off", action="store_true")
     ap.add_argument(
         "--allow-fallback-xy",
         default=None,
@@ -187,7 +226,13 @@ def main() -> int:
         help="仅当显式传入时才允许固定坐标（历史证据 603,777）",
     )
     args = ap.parse_args()
-    return run(args.serial, args.observe, args.open_subsidy, args.allow_fallback_xy)
+    return run(
+        args.serial,
+        args.observe,
+        args.open_subsidy,
+        args.allow_fallback_xy,
+        confirm_gkd_off=args.confirm_gkd_off,
+    )
 
 
 if __name__ == "__main__":

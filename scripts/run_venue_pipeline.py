@@ -34,6 +34,8 @@ from pdd_common import (  # noqa: E402
     make_helper,
     page_signals,
     AdbError,
+    runtime_preflight,
+    script_runtime_blockers,
 )
 import claim_region_exclusive as region  # noqa: E402
 
@@ -117,11 +119,29 @@ def step_light(ui, report: TaskReport, browse_sec: float) -> StepResult:
 
 
 def run(serial: str, observe: bool, confirm_gkd_off: bool, browse_sec: float) -> int:
-    report = TaskReport(mode="observe" if observe else "script", serial=serial)
+    report = TaskReport(mode="observe" if observe else "script", serial=serial or "auto")
     try:
         ui = make_helper(serial)
+        report.serial = ui.serial
         if not observe:
             assert_script_mode_preflight(ui, confirm_gkd_off=confirm_gkd_off)
+
+        live = runtime_preflight(ui)
+        blockers = script_runtime_blockers(live)
+        preflight_result = (
+            StepResult.FAILED if blockers and not observe
+            else StepResult.NEEDS_REVIEW if blockers
+            else StepResult.VERIFIED
+        )
+        report.add(
+            "device_preflight",
+            preflight_result,
+            "; ".join(blockers) if blockers else json.dumps(live, ensure_ascii=False),
+        )
+        if not observe:
+            if blockers:
+                print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
+                return report.exit_code()
 
         root = ui.dump_ui(require_nodes=True)
         sig = page_signals(ui, root)
@@ -139,17 +159,17 @@ def run(serial: str, observe: bool, confirm_gkd_off: bool, browse_sec: float) ->
             lights = ui.find_nodes(root, text_regex=r"^(立即点亮|解锁点亮)$")
             report.add(
                 "observe_order",
-                StepResult.VERIFIED,
+                StepResult.NEEDS_REVIEW if cands or lights else StepResult.UNAVAILABLE,
                 detail=f"claimable={len(cands)} light={len(lights)} recommended=claim_then_light",
             )
             print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
-            return 0
+            return report.exit_code()
 
         # 1) 地区专享
         tab = region.ensure_region_tab(ui, report, skip=False)
-        if tab == StepResult.FAILED:
+        if tab in (StepResult.FAILED, StepResult.NEEDS_REVIEW):
             print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
-            return 1
+            return report.exit_code()
 
         # 2) 逐张领取（开局无券则跳过滑动遍历，避免把顶部点亮区滚没）
         verified = 0
@@ -180,6 +200,9 @@ def run(serial: str, observe: bool, confirm_gkd_off: bool, browse_sec: float) ->
                         continue
                     if res2 == StepResult.FAILED:
                         break
+                    if res2 == StepResult.NEEDS_REVIEW:
+                        print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
+                        return report.exit_code()
                     region.scroll_coupon_area(ui, horizontal=False)
                     time.sleep(0.6)
                     empty += 1
@@ -192,7 +215,7 @@ def run(serial: str, observe: bool, confirm_gkd_off: bool, browse_sec: float) ->
                         break
                 if res == StepResult.NEEDS_REVIEW:
                     print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
-                    return 1
+                    return report.exit_code()
 
         report.add("claim_summary", StepResult.VERIFIED if verified else StepResult.UNAVAILABLE, f"verified={verified}")
         if any(r.result == StepResult.FAILED for r in report.records):
@@ -212,7 +235,7 @@ def run(serial: str, observe: bool, confirm_gkd_off: bool, browse_sec: float) ->
     except AdbError as e:
         report.add("adb", StepResult.FAILED, str(e))
         print(json.dumps(report.summary(), ensure_ascii=False, indent=2))
-        return 3
+        return report.exit_code()
 
 
 def main() -> int:

@@ -68,23 +68,35 @@ GKD **不能**可靠完成「领完 → 点亮 → 浏览满 N 秒 → 核验已
 ```powershell
 cd C:\GkDesktop\GitProjects\GkAndroidLabGKDCoupon
 uv sync --extra dev
-$env:ANDROID_SERIAL = "3B159H003D600000"
+$env:ANDROID_SERIAL = "4236fdb8" # mi14Pro；仅连接一台 device 时也可省略
 
 # 只观察
 uv run python scripts/run_venue_pipeline.py --observe
 uv run python scripts/claim_region_exclusive.py --observe
 
-# 会场有序流水线（先地区领取，再点亮浏览）——脚本模式请先关 GKD key5/key8
+# 会场有序流水线单阶段验收——脚本模式请先关本订阅全部拼多多点击规则
 uv run python scripts/run_venue_pipeline.py --confirm-gkd-off
 # 或
 $env:PDD_CONFIRM_GKD_OFF = "1"
-uv run python scripts/run_pdd_coupon_task.py --from-stage region
+uv run python scripts/run_pdd_coupon_task.py --stages region --confirm-gkd-off
 
 # 页面探查（默认不点领取；不等于 GKD 引擎验收）
 uv run python scripts/verify_pdd_coupon_venue.py
 ```
 
-进场图像定位需要 Pillow/NumPy；缺失时**明确失败**，不会静默改用固定坐标。仅当传入 `--allow-fallback-xy` 才允许历史坐标。
+观察模式只采集页面和设备状态，不唤醒屏幕、不切 Tab、不滑动、不点击。多台设备同时在线时必须传 `--serial`。脚本任务模式会核对前台包名、GKD 无障碍服务未启用、本仓订阅版本，并要求人工确认本订阅全部拼多多自动点击规则及第三方订阅中重叠规则已关闭；条件不满足时拒绝动作。key1/key2 也与脚本打卡/等级券阶段重叠，不能只关 key5/key8。
+
+项目 Skill 入口：`.agents/skills/gk-pdd-coupon/SKILL.md`。每日步骤、券盘点和购买建议以账号当天页面为准；不自动兑换积分、下单或付款。
+
+已有人工作成的脱敏 JSON 时，可用 `uv run python scripts/build_daily_benefits_report.py <input.json>` 输出只读盘点；缺少真实字段时报告会明确标未知，不推测账号权益或节省金额。
+
+历史红色像素定位不再作为默认进场方式；仅显式传入 `--allow-fallback-xy` 才进入兼容探查路径，仍需 Pillow/NumPy。日常运行不应使用历史坐标。
+
+### mi14Pro 逐项实测（2026-09-26）
+
+真机已经证实以下**人工监督 ADB 单步流程**可达：拼多多首页「百亿补贴」→ 频道右上「会员」→ 会员打卡/等级礼包；频道「百亿消费券 100 元券待领」标题→ 消费券会场。打卡从 489 到 504 积分且次日卡片显示待打卡；会员 150 元满 1500、60 元满 480 券已领；双重补贴点击首张后两张一起变「去使用」；广东地区六张券回卡为「去使用」；点亮任务回场显示「今日已点亮」。逐项记录在 [下一阶段 PLAN](docs/2026-09-25-mi14pro-pdd-coupon-next-plan.md)。这些是单日现场结果，不代表全链路脚本或 GKD 引擎已验收。
+
+当前可重复的脚本入口要求先**人工进入相应目标页**，再用 `--stages member` 或 `--stages level` 运行单步；不要从首页直接运行单步，错误页面将返回 `needs_review`。动态消费券 H5 常使 `uiautomator dump` 返回 `could not get idle state`，所以会场领券脚本目前不能承诺无人值守成功；旧 `--open-subsidy` 深链加固定坐标已停用。下一步需基于新鲜截图的文字框和同券卡片身份实现视觉定位及回卡验证，失败时安全停机。默认不启用历史颜色/坐标猜测。
 
 ---
 

@@ -80,7 +80,7 @@ def test_gkd_version_aligned():
 
 def test_gkd_unverified_keys_disabled():
     raw = (ROOT / "dist" / "gkd.json5").read_text(encoding="utf-8")
-    # key 4/5/6/7 遗留或未经验证入口默认关；key8 为有序流水线默认开
+    # key 4/5/6/7 遗留入口默认关；key8 当前仍默认开，但待 mi14Pro 真机验收
     for key in (4, 5, 6, 7):
         block = re.search(
             rf"key:\s*{key},.*?enable:\s*(true|false)",

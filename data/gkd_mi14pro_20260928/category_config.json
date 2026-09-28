@@ -1,0 +1,74 @@
+[
+  {
+    "id": 1788208948780,
+    "enable": 1,
+    "subs_id": 86,
+    "category_key": 0
+  },
+  {
+    "id": 1788208961746,
+    "enable": null,
+    "subs_id": 86,
+    "category_key": 1
+  },
+  {
+    "id": 1788208952328,
+    "enable": null,
+    "subs_id": 86,
+    "category_key": 6
+  },
+  {
+    "id": 1788208952754,
+    "enable": null,
+    "subs_id": 86,
+    "category_key": 7
+  },
+  {
+    "id": 1788208953648,
+    "enable": null,
+    "subs_id": 86,
+    "category_key": 8
+  },
+  {
+    "id": 1788208956031,
+    "enable": null,
+    "subs_id": 86,
+    "category_key": 9
+  },
+  {
+    "id": 1747795110407,
+    "enable": null,
+    "subs_id": 666,
+    "category_key": 3
+  },
+  {
+    "id": 1740730991658,
+    "enable": 1,
+    "subs_id": 666,
+    "category_key": 6
+  },
+  {
+    "id": 1740730990714,
+    "enable": 1,
+    "subs_id": 666,
+    "category_key": 7
+  },
+  {
+    "id": 1740730993830,
+    "enable": 1,
+    "subs_id": 666,
+    "category_key": 8
+  },
+  {
+    "id": 1747795093664,
+    "enable": null,
+    "subs_id": 666,
+    "category_key": 9
+  },
+  {
+    "id": 1747795105407,
+    "enable": 0,
+    "subs_id": 666,
+    "category_key": 10
+  }
+]

@@ -1,0 +1,38 @@
+[
+  {
+    "id": 666,
+    "ctime": 1740730933194,
+    "mtime": 1771127149596,
+    "enable": 0,
+    "enable_update": 1,
+    "order": 0,
+    "update_url": "https://registry.npmmirror.com/@aisouler/gkd_subscription/latest/files/dist/AIsouler_gkd.json5"
+  },
+  {
+    "id": 86,
+    "ctime": 1774189572450,
+    "mtime": 1790564167301,
+    "enable": 1,
+    "enable_update": 1,
+    "order": 1,
+    "update_url": "https://raw.githubusercontent.com/aoguai/subscription/custom/dist/aoguai_gkd.json5"
+  },
+  {
+    "id": -2,
+    "ctime": 1740730913989,
+    "mtime": 1740730914149,
+    "enable": 0,
+    "enable_update": 1,
+    "order": 2,
+    "update_url": null
+  },
+  {
+    "id": 82640113,
+    "ctime": 1790354696868,
+    "mtime": 1790354696881,
+    "enable": 1,
+    "enable_update": 1,
+    "order": 3,
+    "update_url": "http://127.0.0.1:38080/gkd.json5"
+  }
+]

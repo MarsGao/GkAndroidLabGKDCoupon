@@ -56,6 +56,14 @@ GKD 显示名：**MarsGao薅羊毛领券** · 订阅 id：`82640113`。
 - 详解：`docs/2026-09-14-gkd-ordering.md`。
 - 脚本模式必须关闭 key5/key8（及第三方重叠点击），并传 `--confirm-gkd-off`。
 
+## 设备 GKD 配置快照 / 恢复
+
+- **对照快照（mi14pro）**：[`data/gkd_mi14pro_20260928/SNAPSHOT.md`](data/gkd_mi14pro_20260928/SNAPSHOT.md)（含已订阅但总开关关闭的条目与 group 覆盖）。
+- **真源路径**：`/data/data/li.songe.gkd/files/`（`db` / `store` / `subscription`）。`/sdcard/Android/data/li.songe.gkd/files/` 仅为副本或残留，**直接改副本无效**。
+- **恢复记录（OnePlus 13）**：[`data/gkd_op13_private_restore/RESTORE.md`](data/gkd_op13_private_restore/RESTORE.md)。需 root 写入私有目录后做 UI + 私有库回读。
+- 运行时仍遵守：不杜撰 GKD 控制 API；脚本互斥靠现场关规则/无障碍，**不得**把「改库恢复配置」当成日常开关手段。
+- 本仓多根工作区：[`MarsGao-GKDCoupon.code-workspace`](MarsGao-GKDCoupon.code-workspace)（本仓 + `GkAndroidLab` ADB helper）。
+
 ## 相关仓库
 
 - [GkAndroidLab](https://github.com/MarsGao/GkAndroidLab) — ADB helper、设备适配、电商 Skill

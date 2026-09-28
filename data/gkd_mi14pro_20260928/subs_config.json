@@ -1,0 +1,371 @@
+[
+  {
+    "id": 1742379738562,
+    "type": 3,
+    "enable": 1,
+    "subs_id": 666,
+    "app_id": "",
+    "group_key": 0,
+    "exclude": "!app.podcast.cosmos\napp.podcast.cosmos/io.iftech.android.podcast.app.playerpage.view.PlayerActivity\ncom.microsoft.todos"
+  },
+  {
+    "id": 1740764998682,
+    "type": 3,
+    "enable": 0,
+    "subs_id": 666,
+    "app_id": "",
+    "group_key": 1,
+    "exclude": "com.xiaomi.market/com.xiaomi.market.ui.UpdateListActivity"
+  },
+  {
+    "id": 1747795068395,
+    "type": 2,
+    "enable": 1,
+    "subs_id": 666,
+    "app_id": "cn.wps.moffice_eng",
+    "group_key": 9,
+    "exclude": ""
+  },
+  {
+    "id": 1741221585654,
+    "type": 2,
+    "enable": 1,
+    "subs_id": 666,
+    "app_id": "com.alicloud.databox",
+    "group_key": 0,
+    "exclude": ""
+  },
+  {
+    "id": 1749098572121,
+    "type": 2,
+    "enable": null,
+    "subs_id": 666,
+    "app_id": "com.autonavi.minimap",
+    "group_key": 13,
+    "exclude": "com.autonavi.minimap/com.autonavi.map.activity.NewMapActivity"
+  },
+  {
+    "id": 1752338276661,
+    "type": 2,
+    "enable": 1,
+    "subs_id": 666,
+    "app_id": "com.douban.frodo",
+    "group_key": 11,
+    "exclude": ""
+  },
+  {
+    "id": 1752338273518,
+    "type": 2,
+    "enable": 1,
+    "subs_id": 666,
+    "app_id": "com.douban.frodo",
+    "group_key": 13,
+    "exclude": ""
+  },
+  {
+    "id": 1749389837158,
+    "type": 2,
+    "enable": 1,
+    "subs_id": 666,
+    "app_id": "com.eg.android.AlipayGphone",
+    "group_key": 3,
+    "exclude": ""
+  },
+  {
+    "id": 1749389841800,
+    "type": 2,
+    "enable": 1,
+    "subs_id": 666,
+    "app_id": "com.eg.android.AlipayGphone",
+    "group_key": 22,
+    "exclude": ""
+  },
+  {
+    "id": 1747795000486,
+    "type": 2,
+    "enable": 1,
+    "subs_id": 666,
+    "app_id": "com.google.android.apps.photos",
+    "group_key": 0,
+    "exclude": ""
+  },
+  {
+    "id": 1758439856745,
+    "type": 2,
+    "enable": null,
+    "subs_id": 666,
+    "app_id": "com.google.android.documentsui",
+    "group_key": 10,
+    "exclude": "com.google.android.documentsui/com.android.documentsui.picker.PickActivity"
+  },
+  {
+    "id": 1741133572245,
+    "type": 2,
+    "enable": null,
+    "subs_id": 666,
+    "app_id": "com.google.android.youtube",
+    "group_key": 3,
+    "exclude": "com.google.android.youtube/com.google.android.apps.youtube.app.watchwhile.MainActivity"
+  },
+  {
+    "id": 1748588754995,
+    "type": 2,
+    "enable": 0,
+    "subs_id": 666,
+    "app_id": "com.lbe.security.miui",
+    "group_key": 1,
+    "exclude": ""
+  },
+  {
+    "id": 1747794993402,
+    "type": 2,
+    "enable": 1,
+    "subs_id": 666,
+    "app_id": "com.mcdonalds.gma.cn",
+    "group_key": 3,
+    "exclude": ""
+  },
+  {
+    "id": 1758550087863,
+    "type": 2,
+    "enable": null,
+    "subs_id": 666,
+    "app_id": "com.nowcasting.activity",
+    "group_key": 3,
+    "exclude": "com.nowcasting.activity/com.nowcasting.activity.WeatherActivity"
+  },
+  {
+    "id": 1748269323051,
+    "type": 2,
+    "enable": 0,
+    "subs_id": 666,
+    "app_id": "com.taobao.idlefish",
+    "group_key": 6,
+    "exclude": ""
+  },
+  {
+    "id": 1740795837319,
+    "type": 2,
+    "enable": null,
+    "subs_id": 666,
+    "app_id": "com.taobao.taobao",
+    "group_key": 3,
+    "exclude": "com.taobao.taobao/com.taobao.browser.BrowserActivity"
+  },
+  {
+    "id": 1757731674727,
+    "type": 2,
+    "enable": 0,
+    "subs_id": 666,
+    "app_id": "com.tencent.mm",
+    "group_key": 1,
+    "exclude": ""
+  },
+  {
+    "id": 1749389864727,
+    "type": 2,
+    "enable": 0,
+    "subs_id": 666,
+    "app_id": "com.tencent.mm",
+    "group_key": 7,
+    "exclude": ""
+  },
+  {
+    "id": 1748514707961,
+    "type": 2,
+    "enable": 0,
+    "subs_id": 666,
+    "app_id": "com.tencent.mm",
+    "group_key": 9,
+    "exclude": ""
+  },
+  {
+    "id": 1747794950306,
+    "type": 2,
+    "enable": 1,
+    "subs_id": 666,
+    "app_id": "com.tencent.mm",
+    "group_key": 18,
+    "exclude": ""
+  },
+  {
+    "id": 1747794940790,
+    "type": 2,
+    "enable": 1,
+    "subs_id": 666,
+    "app_id": "com.tencent.mm",
+    "group_key": 19,
+    "exclude": ""
+  },
+  {
+    "id": 1747794946465,
+    "type": 2,
+    "enable": 1,
+    "subs_id": 666,
+    "app_id": "com.tencent.mm",
+    "group_key": 22,
+    "exclude": ""
+  },
+  {
+    "id": 1748269367566,
+    "type": 2,
+    "enable": 0,
+    "subs_id": 666,
+    "app_id": "com.tencent.mm",
+    "group_key": 34,
+    "exclude": ""
+  },
+  {
+    "id": 1748869604229,
+    "type": 2,
+    "enable": 1,
+    "subs_id": 666,
+    "app_id": "com.tencent.mm",
+    "group_key": 35,
+    "exclude": ""
+  },
+  {
+    "id": 1748269369571,
+    "type": 2,
+    "enable": 0,
+    "subs_id": 666,
+    "app_id": "com.tencent.mm",
+    "group_key": 36,
+    "exclude": ""
+  },
+  {
+    "id": 1749731972602,
+    "type": 2,
+    "enable": 0,
+    "subs_id": 666,
+    "app_id": "com.tencent.mm",
+    "group_key": 38,
+    "exclude": ""
+  },
+  {
+    "id": 1748269376100,
+    "type": 2,
+    "enable": 0,
+    "subs_id": 666,
+    "app_id": "com.tencent.mm",
+    "group_key": 39,
+    "exclude": ""
+  },
+  {
+    "id": 1749734016106,
+    "type": 2,
+    "enable": 0,
+    "subs_id": 666,
+    "app_id": "com.tencent.mm",
+    "group_key": 40,
+    "exclude": ""
+  },
+  {
+    "id": 1759303467113,
+    "type": 2,
+    "enable": 0,
+    "subs_id": 666,
+    "app_id": "com.tencent.mm",
+    "group_key": 41,
+    "exclude": ""
+  },
+  {
+    "id": 1786240913636,
+    "type": 2,
+    "enable": 0,
+    "subs_id": 666,
+    "app_id": "com.tencent.mm",
+    "group_key": 42,
+    "exclude": ""
+  },
+  {
+    "id": 1786240913066,
+    "type": 2,
+    "enable": 0,
+    "subs_id": 666,
+    "app_id": "com.tencent.mm",
+    "group_key": 43,
+    "exclude": ""
+  },
+  {
+    "id": 1775664036676,
+    "type": 2,
+    "enable": 1,
+    "subs_id": 666,
+    "app_id": "com.twitter.android",
+    "group_key": 8,
+    "exclude": ""
+  },
+  {
+    "id": 1748269308604,
+    "type": 2,
+    "enable": 0,
+    "subs_id": 666,
+    "app_id": "com.xiaomi.market",
+    "group_key": 10,
+    "exclude": ""
+  },
+  {
+    "id": 1758437511057,
+    "type": 2,
+    "enable": 1,
+    "subs_id": 666,
+    "app_id": "com.xunmeng.pinduoduo",
+    "group_key": 1,
+    "exclude": ""
+  },
+  {
+    "id": 1752414603632,
+    "type": 2,
+    "enable": null,
+    "subs_id": 666,
+    "app_id": "com.xunmeng.pinduoduo",
+    "group_key": 2,
+    "exclude": "com.xunmeng.pinduoduo/com.xunmeng.pinduoduo.ui.activity.HomeActivity"
+  },
+  {
+    "id": 1747795032243,
+    "type": 2,
+    "enable": 1,
+    "subs_id": 666,
+    "app_id": "com.xunmeng.pinduoduo",
+    "group_key": 9,
+    "exclude": ""
+  },
+  {
+    "id": 1759327973210,
+    "type": 2,
+    "enable": 0,
+    "subs_id": 666,
+    "app_id": "com.xunmeng.pinduoduo",
+    "group_key": 12,
+    "exclude": ""
+  },
+  {
+    "id": 1748269016295,
+    "type": 2,
+    "enable": 1,
+    "subs_id": 666,
+    "app_id": "com.xunmeng.pinduoduo",
+    "group_key": 16,
+    "exclude": ""
+  },
+  {
+    "id": 1748269023114,
+    "type": 2,
+    "enable": 1,
+    "subs_id": 666,
+    "app_id": "com.xunmeng.pinduoduo",
+    "group_key": 20,
+    "exclude": ""
+  },
+  {
+    "id": 1740911497130,
+    "type": 2,
+    "enable": null,
+    "subs_id": 666,
+    "app_id": "me.ele",
+    "group_key": 2,
+    "exclude": "me.ele/me.ele.muise.page.WeexPageActivity"
+  }
+]

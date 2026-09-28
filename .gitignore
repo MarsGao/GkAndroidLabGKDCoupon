@@ -10,10 +10,20 @@ __pycache__/
 .pytest_cache/
 data/*.png
 data/*.xml
+data/**/*.png
+data/**/*.xml
+
+# GKD 设备原库/订阅正文/UI dump（摘要 SNAPSHOT.md / snapshot.json / RESTORE.md 入库）
+data/gkd_*/**/*.db
+data/gkd_*/**/*.db-*
+data/gkd_*/subscription/
+data/gkd_*/*_inspect*.py
+data/gkd_probe.db
+data/gkd_*/*_v.py
 
 # Editor / Workspace settings
 .vscode/
-*.code-workspace
+# 允许本仓多根工作区入库（MarsGao-GKDCoupon.code-workspace）
 
 # OS files
 .DS_Store

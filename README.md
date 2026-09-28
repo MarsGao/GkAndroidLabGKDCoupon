@@ -12,6 +12,8 @@
 代理约定见 [`AGENTS.md`](AGENTS.md)。  
 同页先后顺序：[docs/2026-09-14-gkd-ordering.md](docs/2026-09-14-gkd-ordering.md) · 审核方案：[docs/2026-09-13-pdd-automation-review-plan.md](docs/2026-09-13-pdd-automation-review-plan.md)。
 
+设备 GKD 配置：mi14pro 对照快照 [`data/gkd_mi14pro_20260928/SNAPSHOT.md`](data/gkd_mi14pro_20260928/SNAPSHOT.md)；OnePlus 13 私有目录恢复记录 [`data/gkd_op13_private_restore/RESTORE.md`](data/gkd_op13_private_restore/RESTORE.md)（真源在 `/data/data/li.songe.gkd/files/`，非 sdcard 副本）。本地多根工作区：[`MarsGao-GKDCoupon.code-workspace`](MarsGao-GKDCoupon.code-workspace)。
+
 ---
 
 ## 一键导入

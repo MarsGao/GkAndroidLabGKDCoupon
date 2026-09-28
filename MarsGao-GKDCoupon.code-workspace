@@ -1,0 +1,27 @@
+{
+  "folders": [
+    {
+      "name": "GkAndroidLabGKDCoupon",
+      "path": "."
+    },
+    {
+      "name": "GkAndroidLab (ADB helper)",
+      "path": "../GkAndroidLab"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/.pytest_cache": true
+    },
+    "python.defaultInterpreterPath": "python",
+    "files.associations": {
+      "*.json5": "jsonc"
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-python.python"
+    ]
+  }
+}
